@@ -22,5 +22,4 @@ jobs:
         mkdir build
         cd build
         cmake .. -DLLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm
-    - name: make
-      run: make -j4
+        make -j4
