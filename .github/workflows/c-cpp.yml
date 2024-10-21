@@ -17,26 +17,11 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y llvm clang
-    - name: Install g++ 14
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y software-properties-common
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        sudo apt-get update
-        sudo apt-get install -y g++-14 gcc-14
-
-    - name: Set up g++ 14
-      run: |
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-
-    - name: Check GCC version
-      run: |
-        g++ --version
-        gcc --version
     - name: cmake
       run: |
         mkdir build
         cd build
+        export CC=/usr/bin/clang
+        export CXX=/usr/bin/clang++
         cmake .. -DLLVM_DIR=/usr/lib/llvm-14/lib/cmake/llvm -DLLVM_INCLUDE_DIRS=/usr/include/llvm-14
         make -j4
