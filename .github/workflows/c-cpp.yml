@@ -18,6 +18,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y llvm clang
     - name: cmake
-      run: cmake .
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DLLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm
     - name: make
       run: make -j4
