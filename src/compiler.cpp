@@ -83,6 +83,7 @@ typedef struct
   Type *llvmType;
   std::string hardcodedName;
   Value *llvmVar;
+  bool argVar;
 } DCVariable;
 
 typedef struct
@@ -247,7 +248,7 @@ void compile(Lexer &lexer, Settings &settings)
         {
           std::string argName = argNames.at(i);
           Type *argType = argTypes.at(i);
-          functions.back().variables.push_back({argType, argName, arg});
+          functions.back().variables.push_back({argType, argName, arg, true});
           arg = fnArgs++;
         }
       }
@@ -270,7 +271,7 @@ void compile(Lexer &lexer, Settings &settings)
 
         var = builder.CreateAlloca(varType, nullptr, varName);
 
-        functions.back().variables.push_back({varType, varName, var});
+        functions.back().variables.push_back({varType, varName, var, false});
       }
       else if (token.value == "return")
       {
@@ -392,8 +393,12 @@ void compile(Lexer &lexer, Settings &settings)
           else if (token.type == TokenType::IDENTIFIER)
           {
             DCVariable *varFromFn = getVarFromFunction(functions.back(), token.value);
-            Value *var = builder.CreateLoad(varFromFn->llvmType, builder.CreateLoad(builder.getPtrTy(), varFromFn->llvmVar));
-            args.push_back(var);
+            if(varFromFn->argVar){
+              args.push_back(varFromFn->llvmVar);
+            } else {
+              Value *var = builder.CreateLoad(varFromFn->llvmType, varFromFn->llvmVar);
+              args.push_back(var);
+            }
           }
         }
 

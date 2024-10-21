@@ -6,5 +6,5 @@ set(CMAKE_CXX_STANDARD 20)
 set(SOURCES "src/dcc.cpp" "src/args.cpp" "src/fs.cpp" "src/lexer.cpp" "src/compiler.cpp")
 
 add_executable("dcc" ${SOURCES})
-target_link_libraries("dcc" LLVM-18)
+target_link_libraries("dcc" LLVM-19)
 target_include_directories("dcc" PUBLIC "include")
