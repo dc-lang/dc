@@ -17,6 +17,8 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y llvm clang
+    - name: Check Compiler Version
+      run: clang --version
     - name: cmake
       run: |
         mkdir build
