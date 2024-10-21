@@ -285,6 +285,10 @@ void compile(Lexer &lexer, Settings &settings)
           Value *retVar = builder.CreateLoad(rawVar->llvmType, rawVar->llvmVar);
 
           builder.CreateRet(retVar);
+        } 
+        else if(token.type == TokenType::SEMICOLON)
+        {
+          builder.CreateRet(nullptr);
         }
         else
         {
@@ -423,7 +427,7 @@ void compile(Lexer &lexer, Settings &settings)
   raw_fd_ostream dest(rawFileName + ".ll", EC);
   if (EC)
   {
-    std::cout << "\x1b[1mbfcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to open " << rawFileName + ".ll" << ": " << EC << "\n";
+    std::cout << "\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to open " << rawFileName + ".ll" << ": " << EC << "\n";
     exit(1);
   }
 
@@ -437,7 +441,7 @@ void compile(Lexer &lexer, Settings &settings)
   exitcode = system(std::format("llc {}.ll -o {}.s {}", rawFileName, rawFileName, llcargs).c_str());
   if (exitcode != 0)
   {
-    std::cout << "\x1b[1mbfcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to compile IR (exit code: " << exitcode << ")\n";
+    std::cout << "\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to compile IR (exit code: " << exitcode << ")\n";
     exit(1);
   }
 
@@ -449,7 +453,7 @@ void compile(Lexer &lexer, Settings &settings)
   exitcode = system(std::format("as {}.s -o {}.o", rawFileName, rawFileName).c_str());
   if (exitcode != 0)
   {
-    std::cout << "\x1b[1mbfcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to assemble (exit code: " << exitcode << ")\n";
+    std::cout << "\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to assemble (exit code: " << exitcode << ")\n";
     exit(1);
   }
 
@@ -458,10 +462,11 @@ void compile(Lexer &lexer, Settings &settings)
     goto cleanupLevel2;
   }
 
-  exitcode = system(std::format("gcc {}.o -o {}", rawFileName, rawFileName).c_str());
+  exitcode = system(std::format("cc {}.o -o {}", rawFileName, rawFileName).c_str());
   if (exitcode != 0)
   {
-    std::cout << "\x1b[1mbfcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to compile object (exit code: " << exitcode << ")\n";
+    std::cout << "\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to compile object (exit code: " << exitcode << ")\n";
+    std::cout << "\x1b[1mdcc: note:\x1b[0m if you are using an ARM processor, try recompiling with --arm\n";
     exit(1);
   }
 
