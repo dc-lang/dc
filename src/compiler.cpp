@@ -460,7 +460,7 @@ void compile(Lexer &lexer, Settings &settings)
     return;
   }
   std::string cc_command = "cc " + rawFileName + ".o -o " + rawFileName + " " + ccargs;
-  std::string llc_command = "llc " + rawFileName + ".ll -o " + rawFileName + ".s " + llcargc;
+  std::string llc_command = "llc " + rawFileName + ".ll -o " + rawFileName + ".s " + llcargs;
   std::string as_command = "as " + rawFileName + ".s -o " + rawFileName + ".o";
 
   int exitcode = 0;
