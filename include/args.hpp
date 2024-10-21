@@ -14,6 +14,7 @@ typedef enum
 typedef struct
 {
   std::string filename;
+  std::string libs;
   CompilationLevel compilation_level;
 
   std::string getFileNameNoExtenstion();

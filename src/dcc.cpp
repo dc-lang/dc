@@ -12,6 +12,7 @@ int main(int argc, char **argv)
 
   settings.compilation_level = CL_EXE;
   settings.filename = "";
+  settings.libs = "";
   settings.pic = false;
 
   while (true)
@@ -35,6 +36,7 @@ int main(int argc, char **argv)
         printf("  --asm (-S)               Generate only assembly\n");
         printf("  --obj (-c)               Generate only object file\n");
         printf("  --arm (-a)               Apply PIC Relocations for ARM based processors\n");
+        printf("  -l <lib>                 Link libraries\n");
         return 0;
       }
       else if (arg == "--ir" || arg == "-i")
@@ -52,6 +54,9 @@ int main(int argc, char **argv)
       else if (arg == "--arm" || arg == "-a")
       {
         settings.pic = true;
+      }
+      else if (arg == "-l"){
+        settings.libs = settings.libs + argparser.next() + " ";
       }
       else
       {

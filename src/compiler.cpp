@@ -147,6 +147,21 @@ std::string parseEscapeSequences(const std::string &input)
   return output;
 }
 
+std::vector<std::string> split(std::string s, std::string delimiter) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    std::string token;
+    std::vector<std::string> res;
+
+    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+        token = s.substr (pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        res.push_back (token);
+    }
+
+    res.push_back (s.substr (pos_start));
+    return res;
+}
+
 void emitStandardLibrary()
 {
   return;
@@ -419,8 +434,17 @@ void compile(Lexer &lexer, Settings &settings)
 
   std::string rawFileName = settings.getFileNameNoExtenstion();
   std::string llcargs = "";
+  std::string ccargs = "";
   if(settings.pic == true){
   	llcargs = llcargs + "-relocation-model=pic";
+  }
+
+  if(!settings.libs.empty()){
+  	for(std::string &lib : split(settings.libs, " ")){
+  	  if(!lib.empty() && lib != " "){
+  	    ccargs = ccargs + "-l" + lib + "";
+  	  }
+  	}
   }
 
   std::error_code EC;
@@ -462,7 +486,7 @@ void compile(Lexer &lexer, Settings &settings)
     goto cleanupLevel2;
   }
 
-  exitcode = system(std::format("cc {}.o -o {}", rawFileName, rawFileName).c_str());
+  exitcode = system(std::format("cc {}.o -o {} {}", rawFileName, rawFileName, ccargs).c_str());
   if (exitcode != 0)
   {
     std::cout << "\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to compile object (exit code: " << exitcode << ")\n";
