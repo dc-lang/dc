@@ -14,6 +14,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: cmake
-      run: cmake ..
+      run: cmake
     - name: make
       run: make -j4
