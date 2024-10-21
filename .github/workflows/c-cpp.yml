@@ -21,7 +21,7 @@ jobs:
         echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-18 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-$(lsb_release -cs)-18.list
         sudo apt update -y
         sudo apt install llvm-18 clang-18 lldb-18 lld-18 -y
-        sudo apt install libllvm-18-dev -y
+        sudo apt install libllvm18-dev -y
     - name: cmake
       run: |
         mkdir build
