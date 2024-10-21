@@ -27,5 +27,5 @@ jobs:
         cd build
         export CC=/usr/bin/clang
         export CXX=/usr/bin/clang++
-        cmake .. -DLLVM_DIR=/usr/lib/llvm-18/lib/cmake/llvm -DLLVM_INCLUDE_DIRS=/usr/include/llvm-18
+        cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-18 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-18
         make -j4
