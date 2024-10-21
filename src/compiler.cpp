@@ -65,7 +65,7 @@ Type *getTypeFromStr(std::string str)
   {
     for (int i = 0; i < ptrCount; i++)
     {
-      res = PointerType::get(res, 0);
+      res = res->getPointerTo();
     }
   }
 
@@ -536,12 +536,64 @@ void compile(Lexer &lexer, Settings &settings)
           {
             builder.CreateStore(res, assignVar->llvmVar);
           }
+        }
+        else if (op == "->")
+        {
+          token = lexer.next();
+          catchAndExit(token);
 
-        } // TODO: Other operators
+          if (token.type != TokenType::IDENTIFIER)
+          {
+            compilationError("Excepted identifier after -> in assign");
+          }
+          DCVariable *ptrTo = getVarFromFunction(functions.back(), token.value);
+
+          Type *ptrType = ptrTo->llvmType->getPointerTo();
+
+          Value *ptr = builder.CreatePointerCast(ptrTo->llvmVar, ptrType);
+
+          builder.CreateStore(ptr, assignVar->llvmVar);
+        }
         else
         {
           compilationError("Unknown operator: " + op);
+        } // TODO: Other operators
+      }
+      else if (token.value == "deref")
+      {
+        token = lexer.next();
+        catchAndExit(token);
+
+        if (token.type != TokenType::IDENTIFIER)
+        {
+          compilationError("Excepted identifier after deref");
         }
+        std::string toDeref = token.value;
+
+        token = lexer.next();
+        catchAndExit(token);
+
+        if (token.type != TokenType::ARROW)
+        {
+          compilationError("Excepted -> after identifier in deref");
+        }
+
+        token = lexer.next();
+        catchAndExit(token);
+
+        if (token.type != TokenType::IDENTIFIER)
+        {
+          compilationError("Excepted identifier after -> in deref");
+        }
+
+        std::string dest = token.value;
+
+        DCVariable *toDerefVar = getVarFromFunction(functions.back(), toDeref);
+        DCVariable *destVar = getVarFromFunction(functions.back(), dest);
+
+        Value *res = builder.CreateLoad(destVar->llvmType, toDerefVar->llvmVar);
+
+        builder.CreateStore(res, destVar->llvmVar);
       }
 
       break;

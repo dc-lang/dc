@@ -177,6 +177,7 @@ bool Lexer::isKeyword(const std::string &value)
       {"context", TokenType::KEYWORD},
       {"declare", TokenType::KEYWORD},
       {"assign", TokenType::KEYWORD},
+      {"deref", TokenType::KEYWORD},
       {"call", TokenType::KEYWORD},
       {"return", TokenType::KEYWORD}};
   return keywords.find(value) != keywords.end();
