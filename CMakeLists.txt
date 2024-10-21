@@ -7,8 +7,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(SOURCES "src/dcc.cpp" "src/args.cpp" "src/fs.cpp" "src/lexer.cpp" "src/compiler.cpp")
 
-find_package(LLVM 18 REQUIRED CONFIG)
-include_directories(${LLVM_INCLUDE_DIRS})
 
 add_executable("dcc" ${SOURCES})
 target_link_libraries("dcc" LLVM-18)
