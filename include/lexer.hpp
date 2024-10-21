@@ -15,6 +15,9 @@ enum class TokenType
 	SEMICOLON,
 	ARROW,
 	STRING_LITERAL,
+	LPAREN,
+	RPAREN,
+	COMMA,
 	UNKNOWN,
 	END
 };

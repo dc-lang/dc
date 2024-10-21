@@ -93,6 +93,8 @@ typedef struct
   std::vector<DCVariable> variables;
 } DCFunction;
 
+std::vector<DCFunction> functions;
+
 DCVariable *getVarFromFunction(DCFunction &fn, std::string name)
 {
   for (DCVariable &var : fn.variables)
@@ -146,19 +148,21 @@ std::string parseEscapeSequences(const std::string &input)
   return output;
 }
 
-std::vector<std::string> split(std::string s, std::string delimiter) {
-    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-    std::string token;
-    std::vector<std::string> res;
+std::vector<std::string> split(std::string s, std::string delimiter)
+{
+  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+  std::string token;
+  std::vector<std::string> res;
 
-    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
-        token = s.substr (pos_start, pos_end - pos_start);
-        pos_start = pos_end + delim_len;
-        res.push_back (token);
-    }
+  while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos)
+  {
+    token = s.substr(pos_start, pos_end - pos_start);
+    pos_start = pos_end + delim_len;
+    res.push_back(token);
+  }
 
-    res.push_back (s.substr (pos_start));
-    return res;
+  res.push_back(s.substr(pos_start));
+  return res;
 }
 
 void emitStandardLibrary()
@@ -166,13 +170,164 @@ void emitStandardLibrary()
   return;
 }
 
+Value *perform_LLVM_operation(Value *operand1, Value *operand2, char op)
+{
+  switch (op)
+  {
+  case '+':
+    return builder.CreateAdd(operand1, operand2);
+    break;
+  case '-':
+    return builder.CreateSub(operand1, operand2);
+    break;
+  case '*':
+    return builder.CreateMul(operand1, operand2);
+    break;
+  case '/':
+    return builder.CreateSDiv(operand1, operand2);
+    break;
+  }
+  return nullptr;
+}
+
+Value *evaluate_expression(std::vector<Token> expr, Type *preferred_type)
+{
+  std::stack<Value *> values;
+  std::stack<Token> operators;
+
+  for (Token &token : expr)
+  {
+    if (token.type == TokenType::LITERAL)
+    {
+      values.push(ConstantInt::get(preferred_type, std::stoi(token.value)));
+    }
+    else if (token.type == TokenType::IDENTIFIER)
+    {
+      Value *tmp = getVarFromFunction(functions.back(), token.value)->llvmVar;
+      values.push(builder.CreateLoad(preferred_type, tmp));
+    }
+    else if (token.type == TokenType::OPERATOR)
+    {
+      while (!operators.empty() && operators.top().type == TokenType::OPERATOR && ((token.value == "+" || token.value == "-" || token.value == "*" || token.value == "/") && (operators.top().value == "*" || operators.top().value == "/")))
+      {
+        Value *operand2 = values.top();
+        values.pop();
+        Value *operand1 = values.top();
+        values.pop();
+
+        Value *oper_res = perform_LLVM_operation(operand1, operand2, token.value.at(0));
+        if (oper_res == nullptr)
+        {
+          compilationError("Failed to perform LLVM Operation");
+        }
+
+        values.push(oper_res);
+        operators.pop();
+      }
+      operators.push(token);
+    }
+    else if (token.type == TokenType::LPAREN)
+    {
+      operators.push(token);
+    }
+    else if (token.type == TokenType::RPAREN)
+    {
+      while (!operators.empty() && operators.top().type != TokenType::LPAREN)
+      {
+        Value *operand2 = values.top();
+        values.pop();
+        Value *operand1 = values.top();
+        values.pop();
+
+        Value *oper_res = perform_LLVM_operation(operand1, operand2, operators.top().value.at(0));
+        if (oper_res == nullptr)
+        {
+          compilationError("Failed to perform LLVM Operation");
+        }
+
+        values.push(oper_res);
+        operators.pop();
+      }
+      operators.pop();
+    }
+  }
+
+  while (!operators.empty())
+  {
+    // T operand2 = values.top();
+    // values.pop();
+    // T operand1 = values.top();
+    // values.pop();
+    // values.push(perform_operation<T>(operand1, operand2, operators.top()));
+    // operators.pop();
+
+    Value *operand2 = values.top();
+    values.pop();
+    Value *operand1 = values.top();
+    values.pop();
+
+    Value *oper_res = perform_LLVM_operation(operand1, operand2, operators.top().value.at(0));
+    if (oper_res == nullptr)
+    {
+      compilationError("Failed to perform LLVM Operation");
+    }
+
+    values.push(oper_res);
+    operators.pop();
+  }
+
+  return values.top();
+}
+
+Value *parseExpr(Lexer &lexer, Type *preferred_type)
+{
+  Token token = lexer.next();
+  std::vector<Token> expr_tokens = {};
+  Value *res = nullptr;
+  while (token.type != TokenType::END && token.type != TokenType::COMMA && token.type != TokenType::RPAREN && token.type != TokenType::SEMICOLON)
+  {
+    expr_tokens.push_back(token);
+
+    token = lexer.next();
+  }
+  if (expr_tokens.size() == 1) // if only single token in entire expression
+  {
+    token = expr_tokens.at(0);
+    std::string eq = token.value;
+    if (token.type == TokenType::IDENTIFIER)
+    {
+      DCVariable *assignToVar = getVarFromFunction(functions.back(), eq);
+      Value *tmp = builder.CreateLoad(assignToVar->llvmType, assignToVar->llvmVar);
+      res = tmp;
+      // builder.CreateStore(tmp, assignVar->llvmVar);
+    }
+    else if (token.type == TokenType::LITERAL)
+    {
+      if (eq.at(0) == '\'')
+      {
+        // builder.CreateStore(builder.getInt8(eq.at(1)), assignVar->llvmVar);
+        res = builder.getInt8(eq.at(1));
+      }
+      else if (eq.at(0) >= '0' && eq.at(0) <= '9')
+      {
+        Constant *cnst = ConstantInt::get(preferred_type, std::stoi(eq));
+        // builder.CreateStore(cnst, );
+        res = cnst;
+      }
+    }
+  }
+  else
+  {
+    res = evaluate_expression(expr_tokens, preferred_type);
+  }
+  return res;
+}
+
 void compile(Lexer &lexer, Settings &settings)
 {
-  std::vector<DCFunction> functions;
 
   emitStandardLibrary();
 
-  lexer.iterIndex--;
   Token token = lexer.next();
   while (token.type != TokenType::END)
   {
@@ -299,8 +454,8 @@ void compile(Lexer &lexer, Settings &settings)
           Value *retVar = builder.CreateLoad(rawVar->llvmType, rawVar->llvmVar);
 
           builder.CreateRet(retVar);
-        } 
-        else if(token.type == TokenType::SEMICOLON)
+        }
+        else if (token.type == TokenType::SEMICOLON)
         {
           builder.CreateRet(nullptr);
         }
@@ -335,28 +490,16 @@ void compile(Lexer &lexer, Settings &settings)
 
         if (op == "=")
         {
-          token = lexer.next();
-          catchAndExit(token);
-          eq = token.value;
+          // token = lexer.next();
+          // catchAndExit(token);
+          // eq = token.value;
 
-          if (token.type == TokenType::IDENTIFIER)
+          Value *res = parseExpr(lexer, assignVar->llvmType);
+          if (res != nullptr)
           {
-            DCVariable *assignToVar = getVarFromFunction(functions.back(), eq);
-            Value *tmp = builder.CreateLoad(assignToVar->llvmType, assignToVar->llvmVar);
-            builder.CreateStore(tmp, assignVar->llvmVar);
+            builder.CreateStore(res, assignVar->llvmVar);
           }
-          else if (token.type == TokenType::LITERAL)
-          {
-            if (eq.at(0) == '\'')
-            {
-              builder.CreateStore(builder.getInt8(eq.at(1)), assignVar->llvmVar);
-            }
-            else if (eq.at(0) >= '0' && eq.at(0) <= '9')
-            {
-              Constant *cnst = ConstantInt::get(assignVar->llvmType, std::stoi(eq));
-              builder.CreateStore(cnst, assignVar->llvmVar);
-            }
-          }
+
         } // TODO: Other operators
         else
         {
@@ -412,9 +555,12 @@ void compile(Lexer &lexer, Settings &settings)
           else if (token.type == TokenType::IDENTIFIER)
           {
             DCVariable *varFromFn = getVarFromFunction(functions.back(), token.value);
-            if(varFromFn->argVar){
+            if (varFromFn->argVar)
+            {
               args.push_back(varFromFn->llvmVar);
-            } else {
+            }
+            else
+            {
               Value *var = builder.CreateLoad(varFromFn->llvmType, varFromFn->llvmVar);
               args.push_back(var);
             }
@@ -427,6 +573,76 @@ void compile(Lexer &lexer, Settings &settings)
       }
 
       break;
+    case TokenType::IDENTIFIER:
+      std::string identifier = token.value;
+      token = lexer.next();
+      catchAndExit(token);
+
+      if (token.type == TokenType::LPAREN) // function call
+      {
+        std::string fnName = identifier;
+        std::vector<Value *> args = {};
+
+        while (true)
+        {
+          token = lexer.next();
+          catchAndExit(token);
+
+          if (token.type == TokenType::SEMICOLON || token.type == TokenType::RPAREN)
+          {
+            break;
+          }
+
+          if (token.type == TokenType::COMMA)
+            continue;
+
+          if (token.type == TokenType::STRING_LITERAL)
+          {
+            std::string text = token.value;
+            if (text.at(0) == '"')
+            {
+              text.erase(text.begin());
+              text.erase(text.end() - 1);
+            }
+            args.push_back(builder.CreateGlobalStringPtr(parseEscapeSequences(text), "", 0U, &fmodule));
+          }
+          else if (token.type == TokenType::LITERAL)
+          {
+            if (token.value.at(0) == '\'')
+            {
+              Constant *cnst = ConstantInt::get(builder.getInt8Ty(), token.value.at(1));
+              args.push_back(cnst);
+            }
+            else if (token.value.at(0) >= '0' && token.value.at(0) <= '9')
+            {
+              Constant *cnst = ConstantInt::get(builder.getInt32Ty(), std::stoi(token.value));
+              args.push_back(cnst);
+            }
+          }
+          else if (token.type == TokenType::IDENTIFIER)
+          {
+            DCVariable *varFromFn = getVarFromFunction(functions.back(), token.value);
+            if (varFromFn->argVar)
+            {
+              args.push_back(varFromFn->llvmVar);
+            }
+            else
+            {
+              Value *var = builder.CreateLoad(varFromFn->llvmType, varFromFn->llvmVar);
+              args.push_back(var);
+            }
+          }
+        }
+
+        Function *fn = fmodule.getFunction(fnName);
+        if (fn == nullptr)
+        {
+          compilationError("Undefined reference to " + fnName);
+        }
+
+        builder.CreateCall(fn, args);
+      }
+      break;
     }
     token = lexer.next();
   }
@@ -434,16 +650,20 @@ void compile(Lexer &lexer, Settings &settings)
   std::string rawFileName = settings.getFileNameNoExtenstion();
   std::string llcargs = "";
   std::string ccargs = "";
-  if(settings.pic == true){
-  	llcargs = llcargs + "-relocation-model=pic";
+  if (settings.pic == true)
+  {
+    llcargs = llcargs + "-relocation-model=pic";
   }
 
-  if(!settings.libs.empty()){
-  	for(std::string &lib : split(settings.libs, " ")){
-  	  if(!lib.empty() && lib != " "){
-  	    ccargs += "-l" + lib + " ";
-  	  }
-  	}
+  if (!settings.libs.empty())
+  {
+    for (std::string &lib : split(settings.libs, " "))
+    {
+      if (!lib.empty() && lib != " ")
+      {
+        ccargs += "-l" + lib + " ";
+      }
+    }
   }
 
   std::error_code EC;
@@ -502,5 +722,4 @@ cleanupLevel2:
   remove((rawFileName + ".s").c_str());
 cleanupLevel1:
   remove((rawFileName + ".ll").c_str());
-
 }

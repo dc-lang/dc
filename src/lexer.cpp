@@ -8,6 +8,7 @@
 
 Lexer::Lexer(const std::string &src) : source(src), current(0), iterIndex(0), tokens({})
 {
+  iterIndex--;
   tokenize();
 }
 
@@ -20,6 +21,11 @@ void Lexer::tokenize()
 
     if (isspace(c))
     {
+      current++;
+    }
+    else if (c == '*')
+    {
+      tokens.push_back(Token(TokenType::OPERATOR, "*"));
       current++;
     }
     else if (isalpha(c) || c == '_' || c == '*')
@@ -56,9 +62,34 @@ void Lexer::tokenize()
         current++;
       }
     }
+    else if (c == '+')
+    {
+      tokens.push_back(Token(TokenType::OPERATOR, "+"));
+      current++;
+    }
+    else if (c == '/')
+    {
+      tokens.push_back(Token(TokenType::OPERATOR, "/"));
+      current++;
+    }
     else if (c == '=')
     {
       tokens.push_back(Token(TokenType::OPERATOR, "="));
+      current++;
+    }
+    else if (c == '(')
+    {
+      tokens.push_back(Token(TokenType::LPAREN, "("));
+      current++;
+    }
+    else if (c == ')')
+    {
+      tokens.push_back(Token(TokenType::RPAREN, ")"));
+      current++;
+    }
+    else if (c == ',')
+    {
+      tokens.push_back(Token(TokenType::COMMA, ","));
       current++;
     }
     else if (c == '%')

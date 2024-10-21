@@ -13,7 +13,7 @@ int main(int argc, char **argv)
   settings.compilation_level = CL_EXE;
   settings.filename = "";
   settings.libs = "";
-  settings.pic = false;
+  settings.pic = true;
 
   while (true)
   {
@@ -35,7 +35,6 @@ int main(int argc, char **argv)
         printf("  --ir (-i)                Generate only IR code\n");
         printf("  --asm (-S)               Generate only assembly\n");
         printf("  --obj (-c)               Generate only object file\n");
-        printf("  --arm (-a)               Apply PIC Relocations for ARM based processors\n");
         printf("  -l <lib>                 Link libraries\n");
         return 0;
       }
@@ -51,12 +50,9 @@ int main(int argc, char **argv)
       {
         settings.compilation_level = CL_OBJ;
       }
-      else if (arg == "--arm" || arg == "-a")
+      else if (arg == "-l")
       {
-        settings.pic = true;
-      }
-      else if (arg == "-l"){
-        settings.libs = settings.libs + argparser.next() + " ";
+        settings.libs += argparser.next() + " ";
       }
       else
       {
@@ -75,5 +71,14 @@ int main(int argc, char **argv)
 
   std::string input = readFile(settings.filename);
   Lexer lexer(input);
+
+  /*
+  Token token = lexer.next();
+  while (token.type != TokenType::END)
+  {
+    printf("Type: %d, Value: %s\n", token.type, token.value.c_str());
+    token = lexer.next();
+  }
+  lexer.iterIndex = 0;*/
   compile(lexer, settings);
 }
