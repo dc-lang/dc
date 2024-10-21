@@ -459,9 +459,11 @@ void compile(Lexer &lexer, Settings &settings)
   {
     return;
   }
+  std::string cc_command = "cc " + rawFileName + ".o -o " + rawFileName + " " + ccargs;
+  std::string llc_command = "llc " + rawFileName + ".ll -o " + rawFileName + ".s " + llcargc;
+  std::string as_command = "as " + rawFileName + ".s -o " + rawFileName + ".o";
 
   int exitcode = 0;
-  std::string llc_command = "llc " + rawFileName + ".ll -o " + rawFileName + ".s " + llcargc;
   exitcode = system(llc_command.c_str());
   if (exitcode != 0)
   {
@@ -474,7 +476,6 @@ void compile(Lexer &lexer, Settings &settings)
     goto cleanupLevel1;
   }
 
-  std::string as_command = "as " + rawFileName + ".s -o " + rawFileName + ".o";
   exitcode = system(as_command.c_str());
   if (exitcode != 0)
   {
@@ -487,7 +488,6 @@ void compile(Lexer &lexer, Settings &settings)
     goto cleanupLevel2;
   }
 
-  std::string cc_command = "cc " + rawFileName + ".o -o " + rawFileName + " " + ccargs;
   exitcode = system(cc_command.c_str());
   if (exitcode != 0)
   {
