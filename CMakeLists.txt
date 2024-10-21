@@ -7,8 +7,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(SOURCES "src/dcc.cpp" "src/args.cpp" "src/fs.cpp" "src/lexer.cpp" "src/compiler.cpp")
 
-include_directories(/usr/include/llvm-18)
-include_directories(/usr/include/llvm-c-18)
+if(DEFINED LLVM_INCLUDE_DIRS)
+  include_directories(${LLVM_INCLUDE_DIRS})
+endif()
+if(DEFINED LLVMC_INCLUDE_DIRS)
+  include_directories(${LLVMC_INCLUDE_DIRS})
+endif()
 
 add_executable("dcc" ${SOURCES})
 target_link_libraries("dcc" LLVM-18)
