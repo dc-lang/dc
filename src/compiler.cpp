@@ -7,7 +7,6 @@
 
 #include <lexer.hpp>
 #include <stack>
-#include <format>
 #include <args.hpp>
 #include <iostream>
 
@@ -442,7 +441,7 @@ void compile(Lexer &lexer, Settings &settings)
   if(!settings.libs.empty()){
   	for(std::string &lib : split(settings.libs, " ")){
   	  if(!lib.empty() && lib != " "){
-  	    ccargs = ccargs + "-l" + lib + "";
+  	    ccargs += "-l" + lib + " ";
   	  }
   	}
   }
@@ -462,7 +461,8 @@ void compile(Lexer &lexer, Settings &settings)
   }
 
   int exitcode = 0;
-  exitcode = system(std::format("llc {}.ll -o {}.s {}", rawFileName, rawFileName, llcargs).c_str());
+  std::string llc_command = "llc " + rawFileName + ".ll -o " + rawFileName + ".s " + llcargc;
+  exitcode = system(llc_command.c_str());
   if (exitcode != 0)
   {
     std::cout << "\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to compile IR (exit code: " << exitcode << ")\n";
@@ -474,7 +474,8 @@ void compile(Lexer &lexer, Settings &settings)
     goto cleanupLevel1;
   }
 
-  exitcode = system(std::format("as {}.s -o {}.o", rawFileName, rawFileName).c_str());
+  std::string as_command = "as " + rawFileName + ".s -o " + rawFileName + ".o";
+  exitcode = system(as_command.c_str());
   if (exitcode != 0)
   {
     std::cout << "\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to assemble (exit code: " << exitcode << ")\n";
@@ -486,7 +487,8 @@ void compile(Lexer &lexer, Settings &settings)
     goto cleanupLevel2;
   }
 
-  exitcode = system(std::format("cc {}.o -o {} {}", rawFileName, rawFileName, ccargs).c_str());
+  std::string cc_command = "cc " + rawFileName + ".o -o " + rawFileName + " " + ccargs;
+  exitcode = system(cc_command.c_str());
   if (exitcode != 0)
   {
     std::cout << "\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to compile object (exit code: " << exitcode << ")\n";
