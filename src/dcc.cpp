@@ -61,6 +61,7 @@ int main(int argc, char **argv)
       else
       {
         printf("\x1b[1mdcc:\x1b[0m \x1b[1;31merror:\x1b[0m unrecognized command-line option ’%s’\n", arg.c_str());
+        return 1;
       }
     }
   }
