@@ -13,6 +13,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Install LLVM
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y llvm clang
     - name: cmake
       run: cmake .
     - name: make
