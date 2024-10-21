@@ -13,10 +13,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install LLVM
+    - name: Install everything
       run: |
         sudo apt-get update
-        sudo apt-get install -y llvm clang
+        sudo apt-get install -y llvm clang g++-14
     - name: Check Compiler Version
       run: clang --version
     - name: cmake
