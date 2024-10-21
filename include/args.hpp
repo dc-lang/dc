@@ -17,6 +17,8 @@ typedef struct
   CompilationLevel compilation_level;
 
   std::string getFileNameNoExtenstion();
+
+  bool pic;
 } Settings;
 
 class ArgParser

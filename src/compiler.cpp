@@ -201,7 +201,8 @@ void compile(Lexer &lexer, Settings &settings)
         catchAndExit(token);
 
         if (token.type == TokenType::SEMICOLON)
-        { // TODO: Implement function end
+        {
+          functions.pop_back();
           break;
         }
 
@@ -411,5 +412,64 @@ void compile(Lexer &lexer, Settings &settings)
     }
     token = lexer.next();
   }
-  fmodule.print(outs(), nullptr);
+
+  std::string rawFileName = settings.getFileNameNoExtenstion();
+  std::string llcargs = "";
+  if(settings.pic == true){
+  	llcargs = llcargs + "-relocation-model=pic";
+  }
+
+  std::error_code EC;
+  raw_fd_ostream dest(rawFileName + ".ll", EC);
+  if (EC)
+  {
+    std::cout << "\x1b[1mbfcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to open " << rawFileName + ".ll" << ": " << EC << "\n";
+    exit(1);
+  }
+
+  fmodule.print(dest, nullptr);
+  if (settings.compilation_level == CL_IR)
+  {
+    return;
+  }
+
+  int exitcode = 0;
+  exitcode = system(std::format("llc {}.ll -o {}.s {}", rawFileName, rawFileName, llcargs).c_str());
+  if (exitcode != 0)
+  {
+    std::cout << "\x1b[1mbfcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to compile IR (exit code: " << exitcode << ")\n";
+    exit(1);
+  }
+
+  if (settings.compilation_level == CL_ASM)
+  {
+    goto cleanupLevel1;
+  }
+
+  exitcode = system(std::format("as {}.s -o {}.o", rawFileName, rawFileName).c_str());
+  if (exitcode != 0)
+  {
+    std::cout << "\x1b[1mbfcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to assemble (exit code: " << exitcode << ")\n";
+    exit(1);
+  }
+
+  if (settings.compilation_level == CL_OBJ)
+  {
+    goto cleanupLevel2;
+  }
+
+  exitcode = system(std::format("gcc {}.o -o {}", rawFileName, rawFileName).c_str());
+  if (exitcode != 0)
+  {
+    std::cout << "\x1b[1mbfcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m failed to compile object (exit code: " << exitcode << ")\n";
+    exit(1);
+  }
+
+cleanupLevel3:
+  remove((rawFileName + ".o").c_str());
+cleanupLevel2:
+  remove((rawFileName + ".s").c_str());
+cleanupLevel1:
+  remove((rawFileName + ".ll").c_str());
+
 }
