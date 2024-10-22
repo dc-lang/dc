@@ -38,7 +38,7 @@ jobs:
           if gh release view nightly-release; then
             # Update the existing release notes
             gh release edit nightly-release \
-              --notes "Automated nightly release" \
+              --notes "Automated nightly release for commit ${{ github.sha }}" \
               --title "Nightly Release"
             
             # Upload the new artifact to the existing release
@@ -47,5 +47,5 @@ jobs:
             # Create a new release if it doesn't exist
             gh release create nightly-release ./build/dcc \
               --title "Nightly Release" \
-              --notes "Automated nightly release"
+              --notes "Automated nightly release for commit ${{ github.sha }}"
           fi
