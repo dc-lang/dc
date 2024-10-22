@@ -550,7 +550,8 @@ void compile(Lexer &lexer, Settings &settings)
 
           Type *ptrType = ptrTo->llvmType->getPointerTo();
 
-          Value *ptr = builder.CreatePointerCast(ptrTo->llvmVar, ptrType);
+          // Value *ptr = builder.CreatePointerCast(ptrTo->llvmVar, ptrType);
+          Value *ptr = builder.CreateBitCast(ptrTo->llvmVar, ptrType);
 
           builder.CreateStore(ptr, assignVar->llvmVar);
         }
@@ -591,7 +592,7 @@ void compile(Lexer &lexer, Settings &settings)
         DCVariable *toDerefVar = getVarFromFunction(functions.back(), toDeref);
         DCVariable *destVar = getVarFromFunction(functions.back(), dest);
 
-        Value *res = builder.CreateLoad(destVar->llvmType, toDerefVar->llvmVar);
+        Value *res = builder.CreateLoad(destVar->llvmType, builder.CreateLoad(toDerefVar->llvmType, toDerefVar->llvmVar));
 
         builder.CreateStore(res, destVar->llvmVar);
       }
@@ -718,7 +719,7 @@ void compile(Lexer &lexer, Settings &settings)
   {
     return;
   }
-  std::string cc_command = "cc " + rawFileName + ".o -o " + rawFileName + " " + ccargs;
+  std::string cc_command = "cc " + rawFileName + ".o -o " + rawFileName + " -g " + ccargs;
   std::string llc_command = "llc " + rawFileName + ".ll -o " + rawFileName + ".s " + llcargs;
   std::string as_command = "as " + rawFileName + ".s -o " + rawFileName + ".o";
 
