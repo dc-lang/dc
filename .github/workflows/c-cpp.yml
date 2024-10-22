@@ -39,13 +39,15 @@ jobs:
             # Update the existing release notes
             gh release edit nightly-release \
               --notes "Automated nightly release for commit ${{ github.sha }}" \
-              --title "Nightly Release"
+              --title "Nightly Release" \
+              --prerelease
             
             # Upload the new artifact to the existing release
             gh release upload nightly-release ./build/dcc --clobber
           else
             # Create a new release if it doesn't exist
             gh release create nightly-release ./build/dcc \
+              --notes "Automated nightly release for commit ${{ github.sha }}" \
               --title "Nightly Release" \
-              --notes "Automated nightly release for commit ${{ github.sha }}"
+              --prerelease
           fi
