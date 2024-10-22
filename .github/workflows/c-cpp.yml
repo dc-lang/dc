@@ -26,10 +26,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y llvm-19 clang-19
           sudo apt-get install -y build-essential cmake
+          mkdir build && cd build
 
       - name: Build
         run: |
-          mkdir build && cd build
           if [ "${{ matrix.architecture }}" == "arm32" ]; then
             sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
             CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S ..
@@ -47,6 +47,7 @@ jobs:
 
       - name: Update Nightly Release
         run: |
+          cd ..
           export NOTE="Automated nightly release for commit ${{ github.sha }}. This release contains all of the newest features. Not intended for use unless you're a developer"
           if gh release view nightly-release; then
             gh release edit nightly-release \
