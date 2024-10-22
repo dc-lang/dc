@@ -15,5 +15,5 @@ if(DEFINED LLVMC_INCLUDE_DIRS)
 endif()
 
 add_executable("dcc" ${SOURCES})
-target_link_libraries("dcc" LLVM-19)
+target_link_libraries("dcc" LLVM-18)
 target_include_directories("dcc" PUBLIC "include")
