@@ -20,7 +20,7 @@ jobs:
         sudo apt-key add llvm-snapshot.gpg.key
         echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-$(lsb_release -cs)-19.list
         sudo apt update -y
-        sudo apt install llvm-19 clang-19 lldb-19 lld-19 g++-arm-linux-gnueabi clang-19-arm-linux-gnueabi -y
+        sudo apt install llvm-19 clang-19 lldb-19 lld-19 gcc-arm-linux-gnueabi g++-arm-linux-gnueabi -y
     - name: Build x86_64
       run: |
         mkdir build
