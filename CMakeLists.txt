@@ -14,11 +14,6 @@ if(DEFINED LLVMC_INCLUDE_DIRS)
   include_directories(${LLVMC_INCLUDE_DIRS})
 endif()
 
-find_package(LLVM 19 REQUIRED CONFIG)
-
-include_directories(${LLVM_INCLUDE_DIRS})
-add_definitions(${LLVM_DEFINITIONS})
-
 add_executable("dcc" ${SOURCES})
-target_link_libraries("dcc" ${LLVM_LIBS})
+target_link_libraries("dcc" LLVM-19)
 target_include_directories("dcc" PUBLIC "include")
