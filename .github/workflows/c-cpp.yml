@@ -43,7 +43,7 @@ jobs:
 
     - name: Build for ARM
       run: |
-        mkdir build && cd build
+        cd build
         sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
         CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
