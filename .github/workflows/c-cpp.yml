@@ -38,7 +38,7 @@ jobs:
           if gh release view nightly-release; then
             # Update the existing release notes
             gh release edit nightly-release \
-              --notes "Automated nightly release for commit ${{ github.sha }}" \
+              --notes "Automated nightly release for commit ${{ github.sha }}. Not intended for use unless you're a developer" \
               --title "Nightly Release" \
               --prerelease
             
@@ -47,7 +47,7 @@ jobs:
           else
             # Create a new release if it doesn't exist
             gh release create nightly-release ./build/dcc \
-              --notes "Automated nightly release for commit ${{ github.sha }}" \
+              --notes "Automated nightly release for commit ${{ github.sha }}. Not intended for use unless you're a developer" \
               --title "Nightly Release" \
               --prerelease
           fi
