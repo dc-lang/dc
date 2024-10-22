@@ -62,6 +62,7 @@ int main(int argc, char **argv)
     }
   }
 
+  settings.filename = "/home/aceinet/dc/build/a.dc";
   if (settings.filename.empty())
   {
     printf("\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m no input files\n");

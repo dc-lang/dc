@@ -17,7 +17,7 @@ IRBuilder<> builder(context);
 Module fmodule("dc", context);
 Lexer *g_lexer;
 
-Value *parseExpr(Type *preferred_type, bool rewind = false);
+Value *parseExpr(Type *preferred_type = nullptr, bool rewind = false);
 
 void compilationError(std::string err)
 {
@@ -94,10 +94,19 @@ typedef struct
 
 typedef struct
 {
+  BasicBlock *trueBlock;
+  BasicBlock *falseBlock;
+  BasicBlock *mergeBlock;
+  bool elif;
+} DCIfStatement;
+
+typedef struct
+{
   FunctionType *fnType;
   Function *fn;
   BasicBlock *fnBlock;
   std::vector<DCVariable> variables;
+  std::vector<DCIfStatement> ifstatements;
 } DCFunction;
 
 std::vector<DCFunction> functions;
@@ -309,7 +318,13 @@ Value *parseExpr(Type *preferred_type, bool rewind)
   std::vector<Token> expr_tokens = {};
   Value *res = nullptr;
 
-  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON)
+  Type *ty = preferred_type;
+  if (ty == nullptr)
+  {
+    ty = builder.getInt32Ty();
+  }
+
+  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON && token.value != "==")
   {
     expr_tokens.push_back(token);
 
@@ -324,6 +339,7 @@ Value *parseExpr(Type *preferred_type, bool rewind)
       DCVariable *assignToVar = getVarFromFunction(functions.back(), eq);
       Value *tmp = builder.CreateLoad(assignToVar->llvmType, assignToVar->llvmVar);
       res = tmp;
+      ty = assignToVar->llvmType;
       // builder.CreateStore(tmp, assignVar->llvmVar);
     }
     else if (token.type == TokenType::LITERAL)
@@ -332,10 +348,11 @@ Value *parseExpr(Type *preferred_type, bool rewind)
       {
         // builder.CreateStore(builder.getInt8(eq.at(1)), assignVar->llvmVar);
         res = builder.getInt8(eq.at(1));
+        ty = builder.getInt8Ty();
       }
       else if (eq.at(0) >= '0' && eq.at(0) <= '9')
       {
-        Constant *cnst = ConstantInt::get(preferred_type, std::stoi(eq));
+        Constant *cnst = ConstantInt::get(ty, std::stoi(eq));
         // builder.CreateStore(cnst, );
         res = cnst;
       }
@@ -343,13 +360,133 @@ Value *parseExpr(Type *preferred_type, bool rewind)
   }
   else
   {
-    res = evaluate_expression(expr_tokens, preferred_type);
+    res = evaluate_expression(expr_tokens, ty);
   }
   if (rewind)
   {
     g_lexer->iterIndex = old_pos;
   }
   return res;
+}
+
+Value *cmpExpr(bool isElif = false)
+{
+  if (isElif)
+  {
+    builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
+  }
+  Value *LHS = parseExpr();
+
+  Token op = g_lexer->tokens[g_lexer->iterIndex];
+
+  Value *RHS = parseExpr();
+
+  if (op.type != TokenType::OPERATOR)
+  {
+    compilationError("Non-operator token in IF statement");
+  }
+
+  if (op.value == "==")
+  {
+    BasicBlock *trueBlock = BasicBlock::Create(context, "", functions.back().fn);
+
+    BasicBlock *falseBlock = nullptr;
+    BasicBlock *mergeBlock = nullptr;
+    if (!isElif)
+    {
+      falseBlock = BasicBlock::Create(context, "", functions.back().fn);
+      mergeBlock = BasicBlock::Create(context, "", functions.back().fn);
+      builder.CreateCondBr(builder.CreateICmpEQ(LHS, RHS), trueBlock, falseBlock);
+      builder.SetInsertPoint(trueBlock);
+    }
+    else
+    {
+      /*
+
+        when we create an initalizer if we have three blocks:
+        true:
+        ...
+        false:
+        ...
+        merge:
+        basically everything else
+
+        the first thing we wanna do is to copy the merge block addr from previous if/elif to the current elif
+        when we create an elif statement we should be inserting in false block of a previous if/elif
+        then we create a true and an empty false block
+        also if the previous if/elif is true, then we need to insert branch to merge to the true block
+      */
+      // trueBlock = BasicBlock::Create(context, "", functions.back().fn);
+      falseBlock = BasicBlock::Create(context, "", functions.back().fn);
+
+      mergeBlock = functions.back().ifstatements.back().mergeBlock;
+
+      builder.CreateCondBr(builder.CreateICmpEQ(LHS, RHS), trueBlock, falseBlock);
+
+      // br to merge if previous if/elif is true
+
+      builder.SetInsertPoint(functions.back().ifstatements.back().trueBlock);
+      builder.CreateBr(mergeBlock); // merge block is the same all across the if statement, so that it's fine if we use
+                                    // the local one
+
+      if (functions.back().ifstatements.back().elif)
+      {
+        builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
+        builder.CreateBr(mergeBlock);
+      }
+      builder.SetInsertPoint(trueBlock);
+
+      /*
+
+        now it should look like this:
+
+        compare
+        jump to true1 or false1
+
+        true 1:
+        ...
+        jump merge
+
+
+        false 1:
+        ...
+        compare
+        jump to true2 or false2
+
+        true 2:
+        ... << Insert point here
+
+        false 2:
+
+        merge:
+
+        == C Pseudocode
+        if(...){
+
+        } else {
+          if(...){
+
+          } else {
+
+          }
+        }
+      */
+    }
+
+    DCIfStatement ifst;
+    ifst.trueBlock = trueBlock;
+    ifst.falseBlock = falseBlock;
+    ifst.mergeBlock = mergeBlock;
+    ifst.elif = isElif;
+
+    functions.back().ifstatements.push_back(ifst);
+  }
+  else
+  {
+    compilationError("Invalid operator in IF statement: " + op.value);
+  }
+
+  return LHS;
 }
 
 void compile(Lexer &lexer, Settings &settings)
@@ -576,6 +713,29 @@ void compile(Lexer &lexer, Settings &settings)
         Value *res = builder.CreateLoad(destVar->llvmType, builder.CreateLoad(toDerefVar->llvmType, toDerefVar->llvmVar));
 
         builder.CreateStore(res, destVar->llvmVar);
+      }
+      else if (token.value == "if")
+      {
+        Value *res = cmpExpr();
+      }
+      else if (token.value == "else")
+      {
+        builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
+      }
+      else if (token.value == "elif")
+      {
+        Value *res = cmpExpr(true);
+      }
+      else if (token.value == "fi")
+      {
+        if (functions.back().ifstatements.back().elif)
+        {
+          builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
+          builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        }
+        builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        builder.SetInsertPoint(functions.back().ifstatements.back().mergeBlock);
       }
 
       break;

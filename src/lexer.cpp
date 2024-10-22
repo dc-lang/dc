@@ -74,8 +74,16 @@ void Lexer::tokenize()
     }
     else if (c == '=')
     {
-      tokens.push_back(Token(TokenType::OPERATOR, "="));
-      current++;
+      if (current + 1 < source.size() && source[current + 1] == '=')
+      {
+        tokens.push_back(Token(TokenType::OPERATOR, "=="));
+        current += 2;
+      }
+      else
+      {
+        tokens.push_back(Token(TokenType::OPERATOR, "="));
+        current++;
+      }
     }
     else if (c == '(')
     {
@@ -178,6 +186,10 @@ bool Lexer::isKeyword(const std::string &value)
       {"declare", TokenType::KEYWORD},
       {"assign", TokenType::KEYWORD},
       {"deref", TokenType::KEYWORD},
+      {"if", TokenType::KEYWORD},
+      {"fi", TokenType::KEYWORD},
+      {"else", TokenType::KEYWORD},
+      {"elif", TokenType::KEYWORD},
       {"call", TokenType::KEYWORD},
       {"return", TokenType::KEYWORD}};
   return keywords.find(value) != keywords.end();
