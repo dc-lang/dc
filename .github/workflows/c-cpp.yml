@@ -25,14 +25,16 @@ jobs:
       run: |
         mkdir build
         cd build
-        export CC=/usr/bin/clang
-        export CXX=/usr/bin/clang++
+        export CC=clang
+        export CXX=clang++
         cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
         mv dcc dcc-x86_64
     - name: Build armv7
       run: |
         cd build
+        export CC=/usr/bin/arm-linux-gnu-gcc
+        export CXX=/usr/bin/arm-linux-gnu-g++
         cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19 -DCMAKE_TOOLCHAIN_FILE=../toolchain-arm.cmake
         make -j4
         mv dcc dcc-arm
