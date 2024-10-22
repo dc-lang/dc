@@ -34,4 +34,4 @@ jobs:
 
     - name: Update Nightly Release
       run: |
-        gh release create nightly-release-${{ github.run_id }} ./build/dcc --title "Nightly Release" --notes "Automated nightly release"
+        gh release create nightly-release-${{ github.run_id }} ./build/dcc --title "Nightly Release" --notes "This is a developement release for commit `{{ github.sha }}`, it can contain bugs, so it's not recommended to use this"
