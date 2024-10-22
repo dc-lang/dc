@@ -34,15 +34,14 @@ jobs:
     
     - name: Build for ${{ matrix.architecture }}
       run: |
-        mkdir build
-        cd build
         if [ "${{ matrix.architecture }}" == "arm32" ]; then
           sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
           CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S .
         else
-          cmake -B build -S ..
+          cmake -B build -S .
         fi
-          cmake ..
+          cmake .
+        make -j4
 
     - name: Authenticate GitHub CLI
       run: echo "${{ secrets.GITHUB_TOKEN }}"|gh auth login --with-token
