@@ -30,7 +30,7 @@ jobs:
     
     - name: Build for x86_64
       run: |
-        md build && cd build
+        mkdir build && cd build
         #if [ "${{ matrix.architecture }}" == "arm32" ]; then
           #sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
           #CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S .
@@ -43,7 +43,7 @@ jobs:
 
     - name: Build for ARM
       run: |
-        md build && cd build
+        mkdir build && cd build
         sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
         CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
