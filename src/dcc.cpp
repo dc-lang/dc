@@ -72,13 +72,5 @@ int main(int argc, char **argv)
   std::string input = readFile(settings.filename);
   Lexer lexer(input);
 
-  /*
-  Token token = lexer.next();
-  while (token.type != TokenType::END)
-  {
-    printf("Type: %d, Value: %s\n", token.type, token.value.c_str());
-    token = lexer.next();
-  }
-  lexer.iterIndex = 0;*/
   compile(lexer, settings);
 }
