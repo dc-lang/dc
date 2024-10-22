@@ -15,18 +15,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install LLVM
+    - name: Install stuff
       run: |
         sudo apt-get update
         sudo apt-get install -y wget
         wget https://apt.llvm.org/llvm-snapshot.gpg.key -O - | sudo apt-key add -
-        echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-18 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-focal-18.list
+        echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-focal-19.list
         sudo apt-get update
-        sudo apt-get install -y llvm-18 clang-18
-    
-    - name: Install build dependencies
-      run: |
+        sudo apt-get install -y llvm-19 clang-19
         sudo apt-get install -y build-essential cmake
+
+    - name: Build LLVM for ARM
+      run: |
+              # Clone the LLVM project
+        git clone https://github.com/llvm/llvm-project.git
+        cd llvm-project
+        git checkout release/19.1.2  # Check out the appropriate version
+
+        mkdir build && cd build
+        cmake -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD="ARM" -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-18 -DLLVM_ENABLE_PROJECTS="clang" ../llvm
+              
+        make -j$(nproc)
+        sudo make install
     
     - name: Build for x86_64
       run: |
@@ -35,7 +45,7 @@ jobs:
           #sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
           #CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S .
         #else
-          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-18 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-18 
+          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         #fi
           #cmake . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
@@ -45,7 +55,7 @@ jobs:
       run: |
         rm build -rf && mkdir build && cd build
         sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
-        CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-18 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-18
+        CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
         mv dcc ../dcc-arm
         cd ..
