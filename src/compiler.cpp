@@ -480,34 +480,15 @@ void compile(Lexer &lexer, Settings &settings)
       {
         token = lexer.next();
         catchAndExit(token);
-        if (token.type == TokenType::IDENTIFIER)
-        {
-          // std::string retVarName = token.value;
-          // DCVariable *rawVar = getVarFromFunction(functions.back(), retVarName);
-          // Value *retVar = builder.CreateLoad(rawVar->llvmType, rawVar->llvmVar);
-
-          // builder.CreateRet(retVar);
-
-          lexer.iterIndex--;
-          Value *res = parseExpr(functions.back().fnType->getReturnType());
-          builder.CreateRet(res);
-        }
-        else if (token.type == TokenType::SEMICOLON)
+        if (token.type == TokenType::SEMICOLON)
         {
           builder.CreateRet(nullptr);
         }
         else
         {
-          Constant *cnst = nullptr;
-          if (token.value.at(0) == '\'')
-          {
-            cnst = ConstantInt::get(functions.back().fnType->getReturnType(), token.value.at(1));
-          }
-          else
-          {
-            cnst = ConstantInt::get(functions.back().fnType->getReturnType(), std::stoi(token.value));
-          }
-          builder.CreateRet(cnst);
+          lexer.iterIndex--;
+          Value *res = parseExpr(functions.back().fnType->getReturnType());
+          builder.CreateRet(res);
         }
       }
       else if (token.value == "assign")
