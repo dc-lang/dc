@@ -38,9 +38,9 @@ jobs:
           sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
           CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S .
         else
-          cmake -B build -S .
+          cmake -B build -S . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19 
         fi
-          cmake .
+          cmake . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
 
     - name: Authenticate GitHub CLI
