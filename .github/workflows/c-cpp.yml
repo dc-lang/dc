@@ -8,52 +8,55 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-    
+    strategy:
+      matrix:
+        architecture: [ "x86_64", "arm32", "arm64" ]  # Add ARM architectures here
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Install stuff
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y wget
-        wget https://apt.llvm.org/llvm-snapshot.gpg.key -O - | sudo apt-key add -
-        echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-focal-19.list
-        sudo apt-get update
-        sudo apt-get install -y llvm-19 clang-19
-        sudo apt-get install -y build-essential cmake
-    
-    - name: Build for x86_64
-      run: |
-        mkdir build && cd build
-        #if [ "${{ matrix.architecture }}" == "arm32" ]; then
-          #sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
-          #CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S .
-        #else
-          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
-        #fi
-          #cmake . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
-        make -j4
-        mv dcc ../dcc-x86_64
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Authenticate GitHub CLI
-      run: echo "${{ secrets.GITHUB_TOKEN }}"|gh auth login --with-token
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget https://apt.llvm.org/llvm-snapshot.gpg.key -O - | sudo apt-key add -
+          echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-focal-19.list
+          sudo apt-get update
+          sudo apt-get install -y llvm-19 clang-19
+          sudo apt-get install -y build-essential cmake
 
-    - name: Update Nightly Release
-      run: |
-        export NOTE="Automated nightly release for commit ${{ github.sha }}. This release contains all of the newest features. Not intended for use unless you're a developer"
-        if gh release view nightly-release; then
-          gh release edit nightly-release \
-            --notes "$NOTE" \
-            --title "Nightly Release" \
-            --prerelease
-            
-          gh release upload nightly-release ./dcc-x86_64 --clobber
-        else
-          gh release create nightly-release ./dcc-x86_64 \
-            --notes "$NOTE" \
-            --title "Nightly Release" \
-            --prerelease
-        fi
+      - name: Build
+        run: |
+          mkdir build && cd build
+          if [ "${{ matrix.architecture }}" == "arm32" ]; then
+            sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+            CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S ..
+          elif [ "${{ matrix.architecture }}" == "arm64" ]; then
+            sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+            CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ cmake -B build -S ..
+          else
+            cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
+          fi
+          make -j4
+          mv dcc ../dcc-${{ matrix.architecture }}
+
+      - name: Authenticate GitHub CLI
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Update Nightly Release
+        run: |
+          export NOTE="Automated nightly release for commit ${{ github.sha }}. This release contains all of the newest features. Not intended for use unless you're a developer"
+          if gh release view nightly-release; then
+            gh release edit nightly-release \
+              --notes "$NOTE" \
+              --title "Nightly Release" \
+              --prerelease
+            gh release upload nightly-release ./dcc-${{ matrix.architecture }} --clobber
+          else
+            gh release create nightly-release ./dcc-${{ matrix.architecture }} \
+              --notes "$NOTE" \
+              --title "Nightly Release" \
+              --prerelease
+          fi
