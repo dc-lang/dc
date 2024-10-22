@@ -34,4 +34,18 @@ jobs:
 
     - name: Update Nightly Release
       run: |
-        gh release create nightly-release-${{ github.run_id }} ./build/dcc --title "Nightly Release" --notes "This is a developement release for commit `{{ github.sha }}`, it can contain bugs, so it's not recommended to use this"
+          # Check if the nightly release already exists
+          if gh release view nightly-release; then
+            # Update the existing release notes
+            gh release edit nightly-release \
+              --notes "Automated nightly release for commit `${{ github.sha }}`" \
+              --title "Nightly Release"
+            
+            # Upload the new artifact to the existing release
+            gh release upload nightly-release ./build/dcc --clobber
+          else
+            # Create a new release if it doesn't exist
+            gh release create nightly-release-${{ github.run_id }} ./build/dcc \
+              --title "Nightly Release" \
+              --notes "Automated nightly release for commit `${{ github.sha }}`"
+          fi
