@@ -29,11 +29,13 @@ jobs:
         export CXX=/usr/bin/clang++
         cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
+        mv dcc dcc-x86_64
     - name: Build armv7
       run: |
         cd build
         cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19 -DCMAKE_TOOLCHAIN_FILE=../toolchain-arm.cmake
-        make -j4        
+        make -j4
+        mv dcc dcc-arm
     - name: Authenticate GitHub CLI
       run: echo "${{ secrets.GITHUB_TOKEN }}"|gh auth login --with-token
 
@@ -48,10 +50,10 @@ jobs:
               --prerelease
             
             # Upload the new artifact to the existing release
-            gh release upload nightly-release ./build/dcc --clobber
+            gh release upload nightly-release ./build/dcc-x86_64 ./build/dcc-arm --clobber
           else
             # Create a new release if it doesn't exist
-            gh release create nightly-release ./build/dcc \
+            gh release create nightly-release ./build/dcc-x86_64 ./build/dcc-arm \
               --notes "Automated nightly release for commit ${{ github.sha }}. Not intended for use unless you're a developer" \
               --title "Nightly Release" \
               --prerelease
