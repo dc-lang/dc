@@ -32,7 +32,7 @@ jobs:
         #git checkout release/19.1.2  # Check out the appropriate version
 
         mkdir build && cd build
-        cmake -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD="ARM" -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-18 -DLLVM_ENABLE_PROJECTS="clang" ../llvm
+        cmake -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD="ARM" -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-18 -DLLVM_ENABLE_PROJECTS="clang" ../llvm -DCMAKE_BUILD_TYPE=RelWithDebInfo
               
         make -j$(nproc)
         sudo make install
