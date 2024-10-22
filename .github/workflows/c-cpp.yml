@@ -27,7 +27,6 @@ jobs:
 
     - name: Build LLVM for ARM
       run: |
-              # Clone the LLVM project
         git clone https://github.com/llvm/llvm-project.git
         cd llvm-project
         git checkout release/19.1.2  # Check out the appropriate version
@@ -66,20 +65,16 @@ jobs:
 
     - name: Update Nightly Release
       run: |
-          # Check if the nightly release already exists
-          if gh release view nightly-release; then
-            # Update the existing release notes
-            gh release edit nightly-release \
-              --notes "Automated nightly release for commit ${{ github.sha }}. Not intended for use unless you're a developer" \
-              --title "Nightly Release" \
-              --prerelease
+        if gh release view nightly-release; then
+          gh release edit nightly-release \
+            --notes "Automated nightly release for commit ${{ github.sha }}. Not intended for use unless you're a developer" \
+            --title "Nightly Release" \
+            --prerelease
             
-            # Upload the new artifact to the existing release
-            gh release upload nightly-release ./dcc-x86_64 ./dcc-arm --clobber
-          else
-            # Create a new release if it doesn't exist
-            gh release create nightly-release ./dcc-x86_64 ./dcc-arm \
-              --notes "Automated nightly release for commit ${{ github.sha }}. Not intended for use unless you're a developer" \
-              --title "Nightly Release" \
-              --prerelease
-          fi
+          gh release upload nightly-release ./dcc-x86_64 ./dcc-arm --clobber
+        else
+          gh release create nightly-release ./dcc-x86_64 ./dcc-arm \
+            --notes "Automated nightly release for commit ${{ github.sha }}. Not intended for use unless you're a developer" \
+            --title "Nightly Release" \
+            --prerelease
+        fi
