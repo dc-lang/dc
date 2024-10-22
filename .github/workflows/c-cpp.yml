@@ -39,15 +39,17 @@ jobs:
         #fi
           #cmake . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
-        mv dcc dcc-x86_64
+        mv dcc ../dcc-x86_64
 
     - name: Build for ARM
       run: |
-        cd build
+        rm build -rf && mkdir build && cd build
         sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
         CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
-        mv dcc dcc-arm
+        mv dcc ../dcc-arm
+        cd ..
+        rm build -rf
 
     - name: Authenticate GitHub CLI
       run: echo "${{ secrets.GITHUB_TOKEN }}"|gh auth login --with-token
@@ -63,10 +65,10 @@ jobs:
               --prerelease
             
             # Upload the new artifact to the existing release
-            gh release upload nightly-release ./build/dcc-x86_64 ./build/dcc-arm --clobber
+            gh release upload nightly-release ./dcc-x86_64 ./dcc-arm --clobber
           else
             # Create a new release if it doesn't exist
-            gh release create nightly-release ./build/dcc-x86_64 ./build/dcc-arm \
+            gh release create nightly-release ./dcc-x86_64 ./dcc-arm \
               --notes "Automated nightly release for commit ${{ github.sha }}. Not intended for use unless you're a developer" \
               --title "Nightly Release" \
               --prerelease
