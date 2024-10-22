@@ -15,14 +15,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install LLVM 19
+    - name: Install LLVM
       run: |
         sudo apt-get update
         sudo apt-get install -y wget
         wget https://apt.llvm.org/llvm-snapshot.gpg.key -O - | sudo apt-key add -
-        echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-focal-19.list
+        echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-18 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-focal-18.list
         sudo apt-get update
-        sudo apt-get install -y llvm-19 clang-19 llvm-19-arm
+        sudo apt-get install -y llvm-18 clang-18 llvm-18-arm
     
     - name: Install build dependencies
       run: |
@@ -35,7 +35,7 @@ jobs:
           #sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
           #CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S .
         #else
-          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19 
+          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-18 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-18 
         #fi
           #cmake . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
@@ -45,7 +45,7 @@ jobs:
       run: |
         rm build -rf && mkdir build && cd build
         sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
-        CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
+        CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-18 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-18
         make -j4
         mv dcc ../dcc-arm
         cd ..
