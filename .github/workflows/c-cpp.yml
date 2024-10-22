@@ -10,10 +10,6 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        architecture: [x86_64, arm32]
     
     steps:
     - name: Checkout code
@@ -32,16 +28,24 @@ jobs:
       run: |
         sudo apt-get install -y build-essential cmake
     
-    - name: Build for ${{ matrix.architecture }}
+    - name: Build for x86_64
       run: |
-        if [ "${{ matrix.architecture }}" == "arm32" ]; then
-          sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
-          CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S .
-        else
-          cmake -B build -S . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19 
-        fi
-          cmake . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
+        #if [ "${{ matrix.architecture }}" == "arm32" ]; then
+          #sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+          #CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S .
+        #else
+          cmake . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19 
+        #fi
+          #cmake . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
         make -j4
+        mv dcc dcc-x86_64
+
+    - name: Build for ARM
+      run: |
+        sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+        CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake . -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
+        make -j4
+        mv dcc dcc-arm
 
     - name: Authenticate GitHub CLI
       run: echo "${{ secrets.GITHUB_TOKEN }}"|gh auth login --with-token
