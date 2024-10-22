@@ -34,8 +34,8 @@ jobs:
       run: |
         rm -rf build && mkdir build
         cd build
-        export CC=/usr/bin/arm-linux-gnu-gcc
-        export CXX=/usr/bin/arm-linux-gnu-g++
+        #export CC=/usr/bin/arm-linux-gnu-gcc
+        #export CXX=/usr/bin/arm-linux-gnu-g++
         cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19 -DCMAKE_TOOLCHAIN_FILE=../toolchain-arm.cmake
         make -j4
         mv dcc dcc-arm
