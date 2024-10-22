@@ -11,34 +11,36 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        architecture: [x86_64, arm32]
+    
     steps:
-    - uses: actions/checkout@v4
-    - name: Install LLVM
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up LLVM
+      uses: llvm/llvm-action@v1
+      with:
+        llvm-version: '19'
+    
+    - name: Install dependencies
       run: |
-        sudo apt install wget -y
-        wget https://apt.llvm.org/llvm-snapshot.gpg.key
-        sudo apt-key add llvm-snapshot.gpg.key
-        echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-$(lsb_release -cs)-19.list
-        sudo apt update -y
-        sudo apt install llvm-19 clang-19 lldb-19 lld-19 gcc-arm-linux-gnueabi g++-arm-linux-gnueabi -y
-    - name: Build x86_64
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+    
+    - name: Build for ${{ matrix.architecture }}
       run: |
         mkdir build
         cd build
-        export CC=clang
-        export CXX=clang++
-        cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
-        make -j4
-        mv dcc dcc-x86_64
-    - name: Build armv7
-      run: |
-        rm -rf build && mkdir build
-        cd build
-        #export CC=/usr/bin/arm-linux-gnu-gcc
-        #export CXX=/usr/bin/arm-linux-gnu-g++
-        cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19 -DCMAKE_TOOLCHAIN_FILE=../toolchain-arm.cmake
-        make -j4
-        mv dcc dcc-arm
+        if [ "${{ matrix.architecture }}" == "arm32" ]; then
+          sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+          CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ cmake -B build -S .
+        else
+          cmake -B build -S ..
+        fi
+          cmake ..
+
     - name: Authenticate GitHub CLI
       run: echo "${{ secrets.GITHUB_TOKEN }}"|gh auth login --with-token
 
