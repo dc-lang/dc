@@ -53,18 +53,13 @@ jobs:
           name: dcc-artifact-x86_64
 
       - name: Update Nightly Release
-        run: |
-          ls
-          export NOTE="Automated nightly release for commit ${{ github.sha }}. This release contains all of the newest features. Not intended for use unless you're a developer"
-          if gh release view nightly-release; then
-            gh release edit nightly-release \
-              --notes "$NOTE" \
-              --title "Nightly Release" \
-              --prerelease
-            gh release upload nightly-release ./dcc-x86_64 --clobber
-          else
-            gh release create nightly-release ./dcc-x86_64 \
-              --notes "$NOTE" \
-              --title "Nightly Release" \
-              --prerelease
-          fi
+        uses: andelf/nightly-release@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: nightly
+          name: 'Nightly Release'
+          body: |
+            Automated nightly release for commit ${{ github.sha }}. This release contains all of the newest features. Not intended for use unless you're a developer
+          files: |
+            ./dcc-x86_64
