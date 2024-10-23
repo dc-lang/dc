@@ -35,8 +35,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-            name: dcc-artifact-x86_64
-            path: ./dcc-x86_64
+          name: dcc-artifact-x86_64
+          path: dcc-x86_64
 
   publish:
     name: Publish
