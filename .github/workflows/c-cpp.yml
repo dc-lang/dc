@@ -30,7 +30,7 @@ jobs:
           cd build
           cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-18 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-18
           make -j4
-          mv dcc dcc-x86_64
+          mv dcc ../dcc-x86_64
       
       - name: Upload artifact
         uses: actions/upload-artifact@v3
