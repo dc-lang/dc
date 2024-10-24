@@ -15,6 +15,7 @@ typedef struct
 {
   std::string filename;
   std::string libs;
+  bool nostdlib;
   CompilationLevel compilation_level;
 
   std::string getFileNameNoExtenstion();

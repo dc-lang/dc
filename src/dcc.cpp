@@ -14,6 +14,7 @@ int main(int argc, char **argv)
   settings.filename = "";
   settings.libs = "";
   settings.pic = true;
+  settings.nostdlib = false;
 
   while (true)
   {
@@ -35,6 +36,7 @@ int main(int argc, char **argv)
         printf("  --ir (-i)                Generate only IR code\n");
         printf("  --asm (-S)               Generate only assembly\n");
         printf("  --obj (-c)               Generate only object file\n");
+        printf("  --nostdlib                Disable standard library\n");
         printf("  -l <lib>                 Link libraries\n");
         return 0;
       }
@@ -50,6 +52,10 @@ int main(int argc, char **argv)
       {
         settings.compilation_level = CL_OBJ;
       }
+      else if (arg == "--nostdlib")
+      {
+        settings.nostdlib = true;
+      }
       else if (arg == "-l")
       {
         settings.libs += argparser.next() + " ";
@@ -62,7 +68,7 @@ int main(int argc, char **argv)
     }
   }
 
-#if 1
+#if 0
   settings.filename = "/home/aceinet/dc/build/a.dc";
 #endif
   if (settings.filename.empty())
@@ -72,7 +78,15 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  std::string input = readFile(settings.filename);
+  std::string input = "";
+  if (!settings.nostdlib)
+  {
+    input = R"(
+extern i32 printf i8* vararg;
+extern i32 scanf i8* vararg;
+)";
+  }
+  input += "\n" + readFile(settings.filename);
   Lexer lexer(input);
 
   compile(lexer, settings);
