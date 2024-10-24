@@ -28,7 +28,7 @@ void Lexer::tokenize()
       tokens.push_back(Token(TokenType::OPERATOR, "*"));
       current++;
     }
-    else if (isalpha(c) || c == '_' || c == '*')
+    else if (isalpha(c) || c == '_' || c == '*' || c == '#')
     {
       tokens.push_back(identifier());
     }
@@ -130,7 +130,7 @@ Token Lexer::next()
 Token Lexer::identifier()
 {
   size_t start = current;
-  while (current < source.size() && (isalnum(source[current]) || source[current] == '_' || source[current] == '*'))
+  while (current < source.size() && (isalnum(source[current]) || source[current] == '_' || source[current] == '*' || source[current] == '#'))
   {
     current++;
   }

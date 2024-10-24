@@ -17,12 +17,130 @@ IRBuilder<> builder(context);
 Module fmodule("dc", context);
 Lexer *g_lexer;
 
+#pragma region collapseThis
+
+typedef struct
+{
+  Type *llvmType;
+  std::string hardcodedName;
+  Value *llvmVar;
+  bool argVar;
+} DCVariable;
+
+typedef struct
+{
+  BasicBlock *trueBlock;
+  BasicBlock *falseBlock;
+  BasicBlock *mergeBlock;
+  bool elif;
+} DCIfStatement;
+
+typedef struct
+{
+  FunctionType *fnType;
+  Function *fn;
+  BasicBlock *fnBlock;
+  std::vector<DCVariable> variables;
+  std::vector<DCIfStatement> ifstatements;
+} DCFunction;
+
+std::vector<DCFunction> functions;
+std::vector<DCFunction> all_functions;
+
 Value *parseExpr(Type *preferred_type = nullptr, bool rewind = false);
+
+std::vector<std::string> split(std::string s, std::string delimiter)
+{
+  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+  std::string token;
+  std::vector<std::string> res;
+
+  while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos)
+  {
+    token = s.substr(pos_start, pos_end - pos_start);
+    pos_start = pos_end + delim_len;
+    res.push_back(token);
+  }
+
+  res.push_back(s.substr(pos_start));
+  return res;
+}
+
+std::string replaceAll(const std::string &str, const std::string &from, const std::string &to)
+{
+  if (from.empty())
+    return str; // Avoid empty substring case
+
+  std::string result = str; // Create a copy of the original string
+  size_t start_pos = 0;
+  while ((start_pos = result.find(from, start_pos)) != std::string::npos)
+  {
+    result.replace(start_pos, from.length(), to);
+    start_pos += to.length(); // Move past the replaced part
+  }
+  return result; // Return the modified string
+}
+
+std::string getTypeName(llvm::Type *type)
+{
+  if (!type)
+  {
+    return "void";
+  }
+
+  std::string typeName;
+  llvm::raw_string_ostream rso(typeName);
+  type->print(rso);
+  return rso.str();
+}
+
+std::string mangleCtxName(Type *returnType, std::vector<Type *> fnArgs, std::string name)
+{
+  if (name == "main")
+    return "main";
+  std::string res = "_Z" + std::to_string(fnArgs.size()) + "_" + replaceAll(fmodule.getModuleIdentifier(), "_", "");
+  res += "_";
+  res += getTypeName(returnType);
+  res += "_" + name + "_";
+  for (Type *type : fnArgs)
+  {
+    res += getTypeName(type) + "_";
+  }
+  if (res.back() == '_')
+  {
+    res.pop_back();
+  }
+  return res;
+}
+
+std::string demangleCtxName(std::string mangled)
+{
+  std::vector<std::string> splitted = split(mangled, "_");
+  if (splitted.size() < 5)
+    return mangled;
+  return splitted.at(4);
+}
 
 void compilationError(std::string err)
 {
   printf("\x1b[1mdcc:\x1b[0m \x1b[1;31mcompilation error:\x1b[0m %s\n", err.c_str());
   exit(1);
+}
+
+std::string getMangledName(std::string raw)
+{
+  if (raw == "main")
+    return "main";
+  for (DCFunction &fn : all_functions)
+  {
+    std::string fnName = fn.fn->getName().str();
+    std::string current = demangleCtxName(fnName);
+    if (current == raw)
+    {
+      return fnName;
+    }
+  }
+  return raw;
 }
 
 Type *getTypeFromStr(std::string str)
@@ -84,33 +202,6 @@ void catchAndExit(Token &token)
   }
 }
 
-typedef struct
-{
-  Type *llvmType;
-  std::string hardcodedName;
-  Value *llvmVar;
-  bool argVar;
-} DCVariable;
-
-typedef struct
-{
-  BasicBlock *trueBlock;
-  BasicBlock *falseBlock;
-  BasicBlock *mergeBlock;
-  bool elif;
-} DCIfStatement;
-
-typedef struct
-{
-  FunctionType *fnType;
-  Function *fn;
-  BasicBlock *fnBlock;
-  std::vector<DCVariable> variables;
-  std::vector<DCIfStatement> ifstatements;
-} DCFunction;
-
-std::vector<DCFunction> functions;
-
 DCVariable *getVarFromFunction(DCFunction &fn, std::string name)
 {
   for (DCVariable &var : fn.variables)
@@ -164,23 +255,6 @@ std::string parseEscapeSequences(const std::string &input)
   return output;
 }
 
-std::vector<std::string> split(std::string s, std::string delimiter)
-{
-  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-  std::string token;
-  std::vector<std::string> res;
-
-  while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos)
-  {
-    token = s.substr(pos_start, pos_end - pos_start);
-    pos_start = pos_end + delim_len;
-    res.push_back(token);
-  }
-
-  res.push_back(s.substr(pos_start));
-  return res;
-}
-
 void emitStandardLibrary()
 {
   return;
@@ -204,17 +278,6 @@ Value *perform_LLVM_operation(Value *operand1, Value *operand2, char op)
     break;
   }
   return nullptr;
-}
-
-template <typename T>
-std::vector<T> slice(const std::vector<T> &vec, size_t start, size_t end)
-{
-  // Ensure start and end are within bounds
-  if (start > end || end > vec.size())
-  {
-    throw std::out_of_range("Invalid slice range");
-  }
-  return std::vector<T>(vec.begin() + start, vec.begin() + end);
 }
 
 Value *evaluate_expression(std::vector<Token> expr, Type *preferred_type)
@@ -337,7 +400,16 @@ Value *parseExpr(Type *preferred_type, bool rewind)
     if (token.type == TokenType::IDENTIFIER)
     {
       DCVariable *assignToVar = getVarFromFunction(functions.back(), eq);
-      Value *tmp = builder.CreateLoad(assignToVar->llvmType, assignToVar->llvmVar);
+
+      Value *tmp = nullptr;
+      if (!assignToVar->argVar)
+      {
+        tmp = builder.CreateLoad(assignToVar->llvmType, assignToVar->llvmVar);
+      }
+      else
+      {
+        tmp = assignToVar->llvmVar;
+      }
       res = tmp;
       ty = assignToVar->llvmType;
       // builder.CreateStore(tmp, assignVar->llvmVar);
@@ -369,6 +441,8 @@ Value *parseExpr(Type *preferred_type, bool rewind)
   return res;
 }
 
+std::string getLabelID();
+
 Value *cmpExpr(bool isElif = false)
 {
   if (isElif)
@@ -388,14 +462,14 @@ Value *cmpExpr(bool isElif = false)
 
   if (op.value == "==")
   {
-    BasicBlock *trueBlock = BasicBlock::Create(context, "", functions.back().fn);
+    BasicBlock *trueBlock = BasicBlock::Create(context, Twine(getLabelID()), functions.back().fn);
 
     BasicBlock *falseBlock = nullptr;
     BasicBlock *mergeBlock = nullptr;
     if (!isElif)
     {
-      falseBlock = BasicBlock::Create(context, "", functions.back().fn);
-      mergeBlock = BasicBlock::Create(context, "", functions.back().fn);
+      falseBlock = BasicBlock::Create(context, Twine(getLabelID()), functions.back().fn);
+      mergeBlock = BasicBlock::Create(context, Twine(getLabelID()), functions.back().fn);
       builder.CreateCondBr(builder.CreateICmpEQ(LHS, RHS), trueBlock, falseBlock);
       builder.SetInsertPoint(trueBlock);
     }
@@ -417,7 +491,7 @@ Value *cmpExpr(bool isElif = false)
         also if the previous if/elif is true, then we need to insert branch to merge to the true block
       */
       // trueBlock = BasicBlock::Create(context, "", functions.back().fn);
-      falseBlock = BasicBlock::Create(context, "", functions.back().fn);
+      falseBlock = BasicBlock::Create(context, Twine(getLabelID()), functions.back().fn);
 
       mergeBlock = functions.back().ifstatements.back().mergeBlock;
 
@@ -489,9 +563,17 @@ Value *cmpExpr(bool isElif = false)
   return LHS;
 }
 
+int label_id = 0;
+std::string getLabelID()
+{
+  label_id++;
+  return functions.back().fn->getName().str() + "Label" + std::to_string(label_id);
+}
+#pragma endregion
+
 void compile(Lexer &lexer, Settings &settings)
 {
-
+  fmodule.setModuleIdentifier(settings.getFileNameNoExtenstion());
   fmodule.setDataLayout("e-m:e-i64:64-n8:16:32:64-S128");
   g_lexer = &lexer;
   emitStandardLibrary();
@@ -541,8 +623,17 @@ void compile(Lexer &lexer, Settings &settings)
 
         if (token.type == TokenType::SEMICOLON)
         {
+          verifyFunction(*functions.back().fn);
           functions.pop_back();
           break;
+        }
+
+        bool nomangle = false;
+        if (token.value == "#nomangle")
+        {
+          nomangle = true;
+          token = lexer.next();
+          catchAndExit(token);
         }
 
         std::string ctxName = token.value;
@@ -574,6 +665,10 @@ void compile(Lexer &lexer, Settings &settings)
           }
         }
 
+        if (!nomangle)
+        {
+          ctxName = mangleCtxName(retType, argTypes, ctxName);
+        }
         FunctionType *ctxType = FunctionType::get(retType, argTypes, false);
         Function *ctx = Function::Create(ctxType, Function::ExternalLinkage, ctxName, fmodule);
 
@@ -581,6 +676,7 @@ void compile(Lexer &lexer, Settings &settings)
         builder.SetInsertPoint(ctxBlock);
 
         functions.push_back({ctxType, ctx, ctxBlock, {}});
+        all_functions.push_back({ctxType, ctx, ctxBlock, {}});
 
         auto fnArgs = ctx->arg_begin();
         Value *arg = fnArgs++;
@@ -729,13 +825,21 @@ void compile(Lexer &lexer, Settings &settings)
       }
       else if (token.value == "fi")
       {
-        if (functions.back().ifstatements.back().elif)
-        {
-          builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
-          builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
-        }
+        builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
         builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
         builder.SetInsertPoint(functions.back().ifstatements.back().mergeBlock);
+        // functions.back().ifstatements.pop_back();
+
+        BasicBlock *mergeBlock = functions.back().ifstatements.back().mergeBlock;
+
+        auto newEnd = std::remove_if(functions.back().ifstatements.begin(), functions.back().ifstatements.end(),
+                                     [mergeBlock](DCIfStatement &s)
+                                     {
+                                       return s.mergeBlock == mergeBlock;
+                                     });
+
+        functions.back().ifstatements.erase(newEnd, functions.back().ifstatements.end());
       }
 
       break;
@@ -800,7 +904,7 @@ void compile(Lexer &lexer, Settings &settings)
           }
         }
 
-        Function *fn = fmodule.getFunction(fnName);
+        Function *fn = fmodule.getFunction(getMangledName(fnName));
         if (fn == nullptr)
         {
           compilationError("Undefined reference to " + fnName);
@@ -846,6 +950,8 @@ void compile(Lexer &lexer, Settings &settings)
       }
     }
   }
+
+  verifyModule(fmodule);
 
   std::error_code EC;
   raw_fd_ostream dest(rawFileName + ".ll", EC);
