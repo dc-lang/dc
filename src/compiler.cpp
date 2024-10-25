@@ -390,7 +390,7 @@ Value *parseExpr(Type *preferred_type, bool rewind)
     ty = builder.getInt32Ty();
   }
 
-  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON && token.value != "==")
+  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON && token.value != "==" && token.value != "!=")
   {
     expr_tokens.push_back(token);
 
@@ -479,112 +479,120 @@ Value *cmpExpr(bool isElif = false)
     compilationError("Non-operator token in IF statement");
   }
 
+  BasicBlock *trueBlock = BasicBlock::Create(context, Twine(getLabelID() + "true"), functions.back().fn);
+
+  BasicBlock *falseBlock = nullptr;
+  BasicBlock *mergeBlock = nullptr;
+
+  Value *cmpRes = nullptr;
   if (op.value == "==")
   {
-    BasicBlock *trueBlock = BasicBlock::Create(context, Twine(getLabelID() + "true"), functions.back().fn);
+    cmpRes = builder.CreateICmpEQ(LHS, RHS);
+  }
+  else if (op.value == "!=")
+  {
+    cmpRes = builder.CreateICmpNE(LHS, RHS);
+  }
 
-    BasicBlock *falseBlock = nullptr;
-    BasicBlock *mergeBlock = nullptr;
-    if (!isElif)
-    {
-      falseBlock = BasicBlock::Create(context, Twine(getLabelID() + "false"), functions.back().fn);
-      mergeBlock = BasicBlock::Create(context, Twine(getLabelID() + "merge"), functions.back().fn);
-      builder.CreateCondBr(builder.CreateICmpEQ(LHS, RHS), trueBlock, falseBlock);
-      builder.SetInsertPoint(trueBlock);
-    }
-    else
-    {
-      /*
+  if (cmpRes == nullptr)
+  {
+    compilationError("Invalid operator in IF Statement");
+  }
 
-        when we create an initalizer if we have three blocks:
-        true:
-        ...
-        false:
-        ...
-        merge:
-        basically everything else
-
-        the first thing we wanna do is to copy the merge block addr from previous if/elif to the current elif
-        when we create an elif statement we should be inserting in false block of a previous if/elif
-        then we create a true and an empty false block
-        also if the previous if/elif is true, then we need to insert branch to merge to the true block
-      */
-      // trueBlock = BasicBlock::Create(context, "", functions.back().fn);
-      falseBlock = BasicBlock::Create(context, Twine(getLabelID() + "false"), functions.back().fn);
-
-      mergeBlock = functions.back().ifstatements.back().mergeBlock;
-
-      builder.CreateCondBr(builder.CreateICmpEQ(LHS, RHS), trueBlock, falseBlock);
-
-      // br to merge if previous if/elif is true
-
-      if (!hasBRorRET(*functions.back().ifstatements.back().trueBlock))
-      {
-        builder.SetInsertPoint(functions.back().ifstatements.back().trueBlock);
-        builder.CreateBr(mergeBlock); // merge block is the same all across the if statement, so that it's fine if we use
-                                      // the local one
-      }
-
-      if (functions.back().ifstatements.back().elif)
-      {
-        if (!hasBRorRET(*functions.back().ifstatements.back().falseBlock))
-        {
-          builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
-          builder.CreateBr(mergeBlock);
-        }
-      }
-      builder.SetInsertPoint(trueBlock);
-
-      /*
-
-        now it should look like this:
-
-        compare
-        jump to true1 or false1
-
-        true 1:
-        ...
-        jump merge
-
-
-        false 1:
-        ...
-        compare
-        jump to true2 or false2
-
-        true 2:
-        ... << Insert point here
-
-        false 2:
-
-        merge:
-
-        == C Pseudocode
-        if(...){
-
-        } else {
-          if(...){
-
-          } else {
-
-          }
-        }
-      */
-    }
-
-    DCIfStatement ifst;
-    ifst.trueBlock = trueBlock;
-    ifst.falseBlock = falseBlock;
-    ifst.mergeBlock = mergeBlock;
-    ifst.elif = isElif;
-
-    functions.back()
-        .ifstatements.push_back(ifst);
+  if (!isElif)
+  {
+    falseBlock = BasicBlock::Create(context, Twine(getLabelID() + "false"), functions.back().fn);
+    mergeBlock = BasicBlock::Create(context, Twine(getLabelID() + "merge"), functions.back().fn);
+    builder.CreateCondBr(cmpRes, trueBlock, falseBlock);
+    builder.SetInsertPoint(trueBlock);
   }
   else
   {
-    compilationError("Invalid operator in IF statement: " + op.value);
+    /*
+
+      when we create an initalizer if we have three blocks:
+      true:
+      ...
+      false:
+      ...
+      merge:
+      basically everything else
+
+      the first thing we wanna do is to copy the merge block addr from previous if/elif to the current elif
+      when we create an elif statement we should be inserting in false block of a previous if/elif
+      then we create a true and an empty false block
+      also if the previous if/elif is true, then we need to insert branch to merge to the true block
+    */
+    // trueBlock = BasicBlock::Create(context, "", functions.back().fn);
+    falseBlock = BasicBlock::Create(context, Twine(getLabelID() + "false"), functions.back().fn);
+
+    mergeBlock = functions.back().ifstatements.back().mergeBlock;
+
+    builder.CreateCondBr(builder.CreateICmpEQ(LHS, RHS), trueBlock, falseBlock);
+
+    // br to merge if previous if/elif is true
+
+    if (!hasBRorRET(*functions.back().ifstatements.back().trueBlock))
+    {
+      builder.SetInsertPoint(functions.back().ifstatements.back().trueBlock);
+      builder.CreateBr(mergeBlock); // merge block is the same all across the if statement, so that it's fine if we use
+                                    // the local one
+    }
+
+    if (functions.back().ifstatements.back().elif)
+    {
+      if (!hasBRorRET(*functions.back().ifstatements.back().falseBlock))
+      {
+        builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
+        builder.CreateBr(mergeBlock);
+      }
+    }
+    builder.SetInsertPoint(trueBlock);
+
+    /*
+
+      now it should look like this:
+
+      compare
+      jump to true1 or false1
+
+      true 1:
+      ...
+      jump merge
+
+
+      false 1:
+      ...
+      compare
+      jump to true2 or false2
+
+      true 2:
+      ... << Insert point here
+
+      false 2:
+
+      merge:
+
+      == C Pseudocode
+      if(...){
+
+      } else {
+        if(...){
+
+        } else {
+
+        }
+      }
+    */
   }
+  DCIfStatement ifst;
+  ifst.trueBlock = trueBlock;
+  ifst.falseBlock = falseBlock;
+  ifst.mergeBlock = mergeBlock;
+  ifst.elif = isElif;
+
+  functions.back()
+      .ifstatements.push_back(ifst);
 
   return LHS;
 }

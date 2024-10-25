@@ -85,6 +85,14 @@ void Lexer::tokenize()
         current++;
       }
     }
+    else if (c == '!')
+    {
+      if (current + 1 < source.size() && source[current + 1] == '=')
+      {
+        tokens.push_back(Token(TokenType::OPERATOR, "!="));
+        current += 2;
+      }
+    }
     else if (c == '(')
     {
       tokens.push_back(Token(TokenType::LPAREN, "("));
