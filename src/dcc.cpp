@@ -84,6 +84,25 @@ int main(int argc, char **argv)
     input = R"(
 extern i32 printf i8* vararg;
 extern i32 scanf i8* vararg;
+extern ptr malloc i64;
+extern void free ptr;
+
+"malloc with a different name, why not"
+context alloc i64 __size -> ptr;
+declare ptr __ptr;
+
+malloc(__size) -> __ptr;
+
+return __ptr;
+context;
+
+"free with a different name, why not too"
+context delete ptr __ptr -> void;
+
+free(__ptr);
+
+return;
+context;
 )";
   }
   input += "\n" + readFile(settings.filename);

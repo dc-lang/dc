@@ -98,8 +98,10 @@ std::string mangleCtxName(Type *returnType, std::vector<Type *> fnArgs, std::str
 {
   if (name == "main")
     return "main";
-  std::string res = "_Z" + std::to_string(fnArgs.size()) + "_" + replaceAll(fmodule.getModuleIdentifier(), "_", "");
-  res += "_";
+  std::string moduleId = replaceAll(fmodule.getModuleIdentifier(), "_", "");
+  std::string fnName = replaceAll(name, "_", "");
+  // std::string res = "_Z" + std::to_string(fnArgs.size()) + "_" + replaceAll(fmodule.getModuleIdentifier(), "_", "");
+  std::string res = "_Z" + std::to_string(fnName.length()) + fnName + "_" + std::to_string(moduleId.length()) + moduleId + "_";
   res += getTypeName(returnType);
   res += "_" + name + "_";
   for (Type *type : fnArgs)
@@ -183,7 +185,8 @@ Type *getTypeFromStr(std::string str)
   {
     for (int i = 0; i < ptrCount; i++)
     {
-      res = res->getPointerTo();
+      // res = res->getPointerTo();
+      res = PointerType::get(res, 0);
     }
   }
 
@@ -443,6 +446,22 @@ Value *parseExpr(Type *preferred_type, bool rewind)
 
 std::string getLabelID();
 
+bool hasBRorRET(BasicBlock &BB)
+{
+  // Get the last instruction in the BasicBlock
+  Instruction *lastInst = BB.getTerminator();
+  if (lastInst == nullptr)
+    return false;
+
+  // Check if the last instruction is a BranchInst or ReturnInst
+  if (isa<BranchInst>(lastInst) || isa<ReturnInst>(lastInst))
+  {
+    return true; // The BasicBlock ends with BR or RET
+  }
+
+  return false; // The BasicBlock does not end with BR or RET
+}
+
 Value *cmpExpr(bool isElif = false)
 {
   if (isElif)
@@ -462,14 +481,14 @@ Value *cmpExpr(bool isElif = false)
 
   if (op.value == "==")
   {
-    BasicBlock *trueBlock = BasicBlock::Create(context, Twine(getLabelID()), functions.back().fn);
+    BasicBlock *trueBlock = BasicBlock::Create(context, Twine(getLabelID() + "true"), functions.back().fn);
 
     BasicBlock *falseBlock = nullptr;
     BasicBlock *mergeBlock = nullptr;
     if (!isElif)
     {
-      falseBlock = BasicBlock::Create(context, Twine(getLabelID()), functions.back().fn);
-      mergeBlock = BasicBlock::Create(context, Twine(getLabelID()), functions.back().fn);
+      falseBlock = BasicBlock::Create(context, Twine(getLabelID() + "false"), functions.back().fn);
+      mergeBlock = BasicBlock::Create(context, Twine(getLabelID() + "merge"), functions.back().fn);
       builder.CreateCondBr(builder.CreateICmpEQ(LHS, RHS), trueBlock, falseBlock);
       builder.SetInsertPoint(trueBlock);
     }
@@ -491,7 +510,7 @@ Value *cmpExpr(bool isElif = false)
         also if the previous if/elif is true, then we need to insert branch to merge to the true block
       */
       // trueBlock = BasicBlock::Create(context, "", functions.back().fn);
-      falseBlock = BasicBlock::Create(context, Twine(getLabelID()), functions.back().fn);
+      falseBlock = BasicBlock::Create(context, Twine(getLabelID() + "false"), functions.back().fn);
 
       mergeBlock = functions.back().ifstatements.back().mergeBlock;
 
@@ -499,14 +518,20 @@ Value *cmpExpr(bool isElif = false)
 
       // br to merge if previous if/elif is true
 
-      builder.SetInsertPoint(functions.back().ifstatements.back().trueBlock);
-      builder.CreateBr(mergeBlock); // merge block is the same all across the if statement, so that it's fine if we use
-                                    // the local one
+      if (!hasBRorRET(*functions.back().ifstatements.back().trueBlock))
+      {
+        builder.SetInsertPoint(functions.back().ifstatements.back().trueBlock);
+        builder.CreateBr(mergeBlock); // merge block is the same all across the if statement, so that it's fine if we use
+                                      // the local one
+      }
 
       if (functions.back().ifstatements.back().elif)
       {
-        builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
-        builder.CreateBr(mergeBlock);
+        if (!hasBRorRET(*functions.back().ifstatements.back().falseBlock))
+        {
+          builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
+          builder.CreateBr(mergeBlock);
+        }
       }
       builder.SetInsertPoint(trueBlock);
 
@@ -553,7 +578,8 @@ Value *cmpExpr(bool isElif = false)
     ifst.mergeBlock = mergeBlock;
     ifst.elif = isElif;
 
-    functions.back().ifstatements.push_back(ifst);
+    functions.back()
+        .ifstatements.push_back(ifst);
   }
   else
   {
@@ -729,9 +755,33 @@ void compile(Lexer &lexer, Settings &settings)
         token = lexer.next();
         catchAndExit(token);
 
+        Type *strongType = nullptr;
+        bool ptrAssign = false;
+        if (token.type == TokenType::TYPE)
+        {
+          if (token.value == "ptr")
+          {
+            ptrAssign = true;
+            token = lexer.next();
+            catchAndExit(token);
+
+            if (token.type != TokenType::TYPE)
+            {
+              compilationError("Explicit pointer assignment needs to have a type after ptr");
+            }
+          }
+          strongType = getTypeFromStr(token.value);
+          token = lexer.next();
+          catchAndExit(token);
+        }
+
         std::string assignName = token.value;
 
         DCVariable *assignVar = getVarFromFunction(functions.back(), assignName);
+        if (strongType == nullptr)
+        {
+          strongType = assignVar->llvmType;
+        }
 
         token = lexer.next();
         catchAndExit(token);
@@ -745,10 +795,17 @@ void compile(Lexer &lexer, Settings &settings)
           // catchAndExit(token);
           // eq = token.value;
 
-          Value *res = parseExpr(assignVar->llvmType);
+          Value *res = parseExpr(strongType);
           if (res != nullptr)
           {
-            builder.CreateStore(res, assignVar->llvmVar);
+            if (!ptrAssign)
+            {
+              builder.CreateStore(res, assignVar->llvmVar);
+            }
+            else
+            {
+              builder.CreateStore(res, builder.CreateLoad(builder.getPtrTy(), assignVar->llvmVar));
+            }
           }
         }
         else if (op == "->")
@@ -816,7 +873,10 @@ void compile(Lexer &lexer, Settings &settings)
       }
       else if (token.value == "else")
       {
-        builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        if (!hasBRorRET(*functions.back().ifstatements.back().mergeBlock))
+        {
+          builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        }
         builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
       }
       else if (token.value == "elif")
@@ -825,11 +885,20 @@ void compile(Lexer &lexer, Settings &settings)
       }
       else if (token.value == "fi")
       {
-        builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        if (!hasBRorRET(*functions.back().ifstatements.back().mergeBlock))
+        {
+          builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        }
         builder.SetInsertPoint(functions.back().ifstatements.back().falseBlock);
-        builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        if (!hasBRorRET(*functions.back().ifstatements.back().falseBlock))
+        {
+          builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        }
+
         builder.SetInsertPoint(functions.back().ifstatements.back().mergeBlock);
         // functions.back().ifstatements.pop_back();
+
+        functions.back().ifstatements.back().mergeBlock->moveAfter(&functions.back().fn->back());
 
         BasicBlock *mergeBlock = functions.back().ifstatements.back().mergeBlock;
 
@@ -840,6 +909,12 @@ void compile(Lexer &lexer, Settings &settings)
                                      });
 
         functions.back().ifstatements.erase(newEnd, functions.back().ifstatements.end());
+
+        if (functions.back().ifstatements.size() > 0)
+        {
+          builder.SetInsertPoint(mergeBlock);
+          builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
+        }
       }
 
       break;
