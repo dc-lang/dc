@@ -1,0 +1,70 @@
+body {
+  display: flex; /* Use flexbox for layout */
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  margin-left: 250px;
+  padding: 0;
+  background-color: #000000;
+  color: #ffffff;
+}
+
+html, body {
+  overflow-x: hidden;
+}
+
+header {
+  background: #007BFF;
+  color: rgb(255, 255, 255);
+  padding: 10px 20px;
+}
+
+nav ul {
+  list-style: none;
+  padding: 0;
+}
+
+nav ul li {
+  display: inline;
+  margin-right: 15px;
+  font-weight: 500;
+}
+
+nav ul li a {
+  color: rgb(255, 255, 255);
+  text-decoration: none;
+}
+
+main {
+  padding: 20px;
+  overflow-x: hidden;
+  background-color: #000000;
+}
+
+section {
+  margin-bottom: 20px;
+}
+
+code {
+  font-size: 1.5em;
+}
+
+header {
+  position: fixed;
+  width: 220px; /* Set a fixed width for the header */
+  background-color: #8c00ff; /* Optional: background color for visibility */
+  padding: 20px; /* Optional: padding for spacing */
+  top: 0; /* Align it to the top */
+  left: 0; /* Align it to the left */
+  height: 100%; /* Make the header full height */
+  overflow-y: auto; /* Allow scrolling within the header if content overflows */
+}
+
+main {
+  flex-grow: 1;
+  padding: 20px;
+}
+
+main a {
+  color: #0077ff;
+}
