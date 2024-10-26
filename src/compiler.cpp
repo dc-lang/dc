@@ -24,7 +24,6 @@ typedef struct
   Type *llvmType;
   std::string hardcodedName;
   Value *llvmVar;
-  bool argVar;
 } DCVariable;
 
 typedef struct
@@ -328,14 +327,7 @@ Value *evaluate_expression(std::vector<Token> expr, Type *preferred_type)
     else if (token.type == TokenType::IDENTIFIER)
     {
       DCVariable *tmp = getVarFromFunction(functions.back(), token.value);
-      if (!tmp->argVar)
-      {
-        values.push(builder.CreateLoad(preferred_type, tmp->llvmVar));
-      }
-      else
-      {
-        values.push(tmp->llvmVar);
-      }
+      values.push(builder.CreateLoad(preferred_type, tmp->llvmVar));
     }
     else if (token.type == TokenType::OPERATOR)
     {
@@ -433,14 +425,7 @@ Value *parseExpr(Type *preferred_type, bool rewind)
       DCVariable *assignToVar = getVarFromFunction(functions.back(), eq);
 
       Value *tmp = nullptr;
-      if (!assignToVar->argVar)
-      {
-        tmp = builder.CreateLoad(assignToVar->llvmType, assignToVar->llvmVar);
-      }
-      else
-      {
-        tmp = assignToVar->llvmVar;
-      }
+      tmp = builder.CreateLoad(assignToVar->llvmType, assignToVar->llvmVar);
       res = tmp;
       ty = assignToVar->llvmType;
       // builder.CreateStore(tmp, assignVar->llvmVar);
@@ -749,7 +734,7 @@ void compile(Lexer &lexer, Settings &settings)
           // functions.back().variables.push_back({argType, argName, arg, true});
           Value *var = builder.CreateAlloca(argType);
           builder.CreateStore(arg, var);
-          functions.back().variables.push_back({argType, argName, var, false});
+          functions.back().variables.push_back({argType, argName, var});
           arg = fnArgs++;
         }
       }
@@ -772,7 +757,7 @@ void compile(Lexer &lexer, Settings &settings)
 
         var = builder.CreateAlloca(varType, nullptr, varName);
 
-        functions.back().variables.push_back({varType, varName, var, false});
+        functions.back().variables.push_back({varType, varName, var});
       }
       else if (token.value == "return")
       {
@@ -980,14 +965,7 @@ void compile(Lexer &lexer, Settings &settings)
 
           DCVariable *storeVar = getVarFromFunction(functions.back(), token.value);
 
-          if (arrayVar->argVar)
-          {
-            builder.CreateStore(res, storeVar->llvmVar);
-          }
-          else
-          {
-            builder.CreateStore(builder.CreateLoad(storeVar->llvmType, res), storeVar->llvmVar);
-          }
+          builder.CreateStore(builder.CreateLoad(storeVar->llvmType, res), storeVar->llvmVar);
         }
       }
 
@@ -1041,15 +1019,9 @@ void compile(Lexer &lexer, Settings &settings)
           else if (token.type == TokenType::IDENTIFIER)
           {
             DCVariable *varFromFn = getVarFromFunction(functions.back(), token.value);
-            if (varFromFn->argVar)
-            {
-              args.push_back(varFromFn->llvmVar);
-            }
-            else
-            {
-              Value *var = builder.CreateLoad(varFromFn->llvmType, varFromFn->llvmVar);
-              args.push_back(var);
-            }
+
+            Value *var = builder.CreateLoad(varFromFn->llvmType, varFromFn->llvmVar);
+            args.push_back(var);
           }
         }
 
