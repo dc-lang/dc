@@ -101,9 +101,9 @@ std::string mangleCtxName(Type *returnType, std::vector<Type *> fnArgs, std::str
   std::string moduleId = replaceAll(fmodule.getModuleIdentifier(), "_", "");
   std::string fnName = replaceAll(name, "_", "");
   // std::string res = "_Z" + std::to_string(fnArgs.size()) + "_" + replaceAll(fmodule.getModuleIdentifier(), "_", "");
-  std::string res = "_Z" + std::to_string(fnName.length()) + fnName + "_" + std::to_string(moduleId.length()) + moduleId + "_";
+  std::string res = "_Z" + std::to_string(fnName.length()) + fnName + std::to_string(moduleId.length()) + moduleId + "_";
   res += getTypeName(returnType);
-  res += "_" + name + "_";
+  res += "_";
   for (Type *type : fnArgs)
   {
     res += getTypeName(type) + "_";
@@ -117,15 +117,43 @@ std::string mangleCtxName(Type *returnType, std::vector<Type *> fnArgs, std::str
 
 std::string demangleCtxName(std::string mangled)
 {
-  std::vector<std::string> splitted = split(mangled, "_");
-  if (splitted.size() < 5)
+  if (!mangled.starts_with("_Z"))
+  {
     return mangled;
-  return splitted.at(4);
+  }
+
+  int nameLen = 0;
+  int i = 0;
+  for (i = 2; i < mangled.size(); i++)
+  {
+    char c = mangled.at(i);
+    if (c >= '0' && c <= '9')
+    {
+      nameLen *= 10;
+      nameLen += c - '0';
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  std::string fnNameDemangled = "";
+  for (; i < mangled.size(); i++)
+  {
+    char c = mangled.at(i);
+    if (c >= '0' && c <= '9')
+      break;
+
+    fnNameDemangled.push_back(c);
+  }
+
+  return fnNameDemangled;
 }
 
 void compilationError(std::string err)
 {
-  printf("\x1b[1mdcc:\x1b[0m \x1b[1;31mcompilation error:\x1b[0m %s\n", err.c_str());
+  printf(std::string("\x1b[1mdcc:\x1b[0m \x1b[1;31mcompilation error:\n ~" + std::to_string(g_lexer->tokens[g_lexer->iterIndex].line) + " | \x1b[0m %s\n").c_str(), err.c_str());
   exit(1);
 }
 
@@ -137,7 +165,7 @@ std::string getMangledName(std::string raw)
   {
     std::string fnName = fn.fn->getName().str();
     std::string current = demangleCtxName(fnName);
-    if (current == raw)
+    if (current == replaceAll(raw, "_", ""))
     {
       return fnName;
     }
@@ -390,7 +418,7 @@ Value *parseExpr(Type *preferred_type, bool rewind)
     ty = builder.getInt32Ty();
   }
 
-  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON && token.value != "==" && token.value != "!=")
+  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON && token.value != "==" && token.value != "!=" && token.value != "->")
   {
     expr_tokens.push_back(token);
 
@@ -924,6 +952,41 @@ void compile(Lexer &lexer, Settings &settings)
           builder.CreateBr(functions.back().ifstatements.back().mergeBlock);
         }
       }
+      else if (token.value == "array")
+      {
+        token = lexer.next();
+        catchAndExit(token);
+
+        if (token.type != TokenType::IDENTIFIER)
+          compilationError("Excepted identifier after keyword array");
+
+        DCVariable *arrayVar = getVarFromFunction(functions.back(), token.value);
+
+        Value *index = parseExpr();
+
+        Value *res = builder.CreateGEP(arrayVar->llvmType, builder.CreateLoad(arrayVar->llvmType, arrayVar->llvmVar), index);
+
+        token = lexer.tokens[lexer.iterIndex];
+
+        if (token.type == TokenType::ARROW)
+        {
+          token = lexer.next();
+          catchAndExit(token);
+          if (token.type != TokenType::IDENTIFIER)
+            compilationError("Excepted identifier in array after ->");
+
+          DCVariable *storeVar = getVarFromFunction(functions.back(), token.value);
+
+          if (arrayVar->argVar)
+          {
+            builder.CreateStore(res, storeVar->llvmVar);
+          }
+          else
+          {
+            builder.CreateStore(builder.CreateLoad(storeVar->llvmType, res), storeVar->llvmVar);
+          }
+        }
+      }
 
       break;
     case TokenType::IDENTIFIER:
@@ -987,7 +1050,8 @@ void compile(Lexer &lexer, Settings &settings)
           }
         }
 
-        Function *fn = fmodule.getFunction(getMangledName(fnName));
+        std::string mangled = getMangledName(fnName);
+        Function *fn = fmodule.getFunction(mangled);
         if (fn == nullptr)
         {
           compilationError("Undefined reference to " + fnName);

@@ -6,9 +6,10 @@
 #include <algorithm>
 #include <unordered_map>
 
-Lexer::Lexer(const std::string &src) : source(src), current(0), iterIndex(0), tokens({})
+Lexer::Lexer(const std::string &src, int startingLine) : source(src), current(0), iterIndex(0), tokens({}), line(0)
 {
   iterIndex--;
+  line -= startingLine;
   tokenize();
 }
 
@@ -19,13 +20,13 @@ void Lexer::tokenize()
   {
     char c = source[current];
 
-    if (isspace(c))
+    if (isspace(c) && c != '\n')
     {
       current++;
     }
     else if (c == '*')
     {
-      tokens.push_back(Token(TokenType::OPERATOR, "*"));
+      tokens.push_back(Token(TokenType::OPERATOR, "*", 0, line));
       current++;
     }
     else if (isalpha(c) || c == '_' || c == '*' || c == '#')
@@ -46,42 +47,42 @@ void Lexer::tokenize()
     }
     else if (c == ';')
     {
-      tokens.push_back(Token(TokenType::SEMICOLON, ";"));
+      tokens.push_back(Token(TokenType::SEMICOLON, ";", 0, line));
       current++;
     }
     else if (c == '-')
     {
       if (current + 1 < source.size() && source[current + 1] == '>')
       {
-        tokens.push_back(Token(TokenType::ARROW, "->"));
+        tokens.push_back(Token(TokenType::ARROW, "->", 0, line));
         current += 2;
       }
       else
       {
-        tokens.push_back(Token(TokenType::OPERATOR, "-"));
+        tokens.push_back(Token(TokenType::OPERATOR, "-", 0, line));
         current++;
       }
     }
     else if (c == '+')
     {
-      tokens.push_back(Token(TokenType::OPERATOR, "+"));
+      tokens.push_back(Token(TokenType::OPERATOR, "+", 0, line));
       current++;
     }
     else if (c == '/')
     {
-      tokens.push_back(Token(TokenType::OPERATOR, "/"));
+      tokens.push_back(Token(TokenType::OPERATOR, "/", 0, line));
       current++;
     }
     else if (c == '=')
     {
       if (current + 1 < source.size() && source[current + 1] == '=')
       {
-        tokens.push_back(Token(TokenType::OPERATOR, "=="));
+        tokens.push_back(Token(TokenType::OPERATOR, "==", 0, line));
         current += 2;
       }
       else
       {
-        tokens.push_back(Token(TokenType::OPERATOR, "="));
+        tokens.push_back(Token(TokenType::OPERATOR, "=", 0, line));
         current++;
       }
     }
@@ -89,37 +90,42 @@ void Lexer::tokenize()
     {
       if (current + 1 < source.size() && source[current + 1] == '=')
       {
-        tokens.push_back(Token(TokenType::OPERATOR, "!="));
+        tokens.push_back(Token(TokenType::OPERATOR, "!=", 0, line));
         current += 2;
       }
     }
     else if (c == '(')
     {
-      tokens.push_back(Token(TokenType::LPAREN, "("));
+      tokens.push_back(Token(TokenType::LPAREN, "(", 0, line));
       current++;
     }
     else if (c == ')')
     {
-      tokens.push_back(Token(TokenType::RPAREN, ")"));
+      tokens.push_back(Token(TokenType::RPAREN, ")", 0, line));
       current++;
     }
     else if (c == ',')
     {
-      tokens.push_back(Token(TokenType::COMMA, ","));
+      tokens.push_back(Token(TokenType::COMMA, ",", 0, line));
       current++;
     }
     else if (c == '%')
     {
-      tokens.push_back(Token(TokenType::OPERATOR, "%"));
+      tokens.push_back(Token(TokenType::OPERATOR, "%", 0, line));
+      current++;
+    }
+    else if (c == '\n')
+    {
+      line++;
       current++;
     }
     else
     {
-      tokens.push_back(Token(TokenType::UNKNOWN, std::string(1, c)));
+      tokens.push_back(Token(TokenType::UNKNOWN, std::string(1, c), 0, line));
       current++;
     }
   }
-  tokens.push_back(Token(TokenType::END, ""));
+  tokens.push_back(Token(TokenType::END, "", 0, line));
 }
 
 Token Lexer::next()
@@ -131,7 +137,7 @@ Token Lexer::next()
   }
   catch (std::out_of_range)
   {
-    return Token(TokenType::END, "");
+    return Token(TokenType::END, "", 0, line);
   }
 }
 
@@ -149,9 +155,9 @@ Token Lexer::identifier()
   }
   else if (isType(value))
   {
-    return Token(TokenType::TYPE, value, std::count(value.begin(), value.end(), '*'));
+    return Token(TokenType::TYPE, value, std::count(value.begin(), value.end(), '*'), line);
   }
-  return Token(TokenType::IDENTIFIER, value);
+  return Token(TokenType::IDENTIFIER, value, 0, line);
 }
 
 Token Lexer::number()
@@ -172,7 +178,7 @@ Token Lexer::character()
     current++;
   }
   current++; // Skip the closing quote
-  return Token(TokenType::LITERAL, source.substr(start, current - start));
+  return Token(TokenType::LITERAL, source.substr(start, current - start), 0, line);
 }
 
 Token Lexer::stringLiteral()
@@ -183,7 +189,7 @@ Token Lexer::stringLiteral()
     current++;
   }
   current++; // Skip the closing quote
-  return Token(TokenType::STRING_LITERAL, source.substr(start, current - start));
+  return Token(TokenType::STRING_LITERAL, source.substr(start, current - start), 0, line);
 }
 
 bool Lexer::isKeyword(const std::string &value)
@@ -198,7 +204,7 @@ bool Lexer::isKeyword(const std::string &value)
       {"fi", TokenType::KEYWORD},
       {"else", TokenType::KEYWORD},
       {"elif", TokenType::KEYWORD},
-      {"call", TokenType::KEYWORD},
+      {"array", TokenType::KEYWORD},
       {"return", TokenType::KEYWORD}};
   return keywords.find(value) != keywords.end();
 }

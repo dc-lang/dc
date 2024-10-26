@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     }
   }
 
-#if 0
+#if 1
   settings.filename = "/home/aceinet/dc/build/a.dc";
 #endif
   if (settings.filename.empty())
@@ -86,6 +86,7 @@ extern i32 printf i8* vararg;
 extern i32 scanf i8* vararg;
 extern ptr malloc i64;
 extern void free ptr;
+extern void exit i32;
 
 "malloc with a different name, why not"
 context alloc i64 __size -> ptr;
@@ -103,10 +104,27 @@ free(__ptr);
 
 return;
 context;
+
+context collapse_handler i8* desc -> void;
+
+printf("\nProgram collapsed: %s\n", desc);
+
+exit(128);
+return;
+context;
 )";
   }
+  int stdlib_newlines = 0;
+  for (int i = 0; i < input.size(); i++)
+  {
+    if (input.at(i) == '\n')
+    {
+      stdlib_newlines++;
+    }
+  }
+
   input += "\n" + readFile(settings.filename);
-  Lexer lexer(input);
+  Lexer lexer(input, stdlib_newlines);
 
   compile(lexer, settings);
 }
