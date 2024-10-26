@@ -12,8 +12,12 @@
     <nav>
       <ul>
         <li><a href="#introduction">Introduction</a></li>
+        <br>
         <li><a href="#installation">Installation</a></li>
+        <br>
         <li><a href="#examples">Examples</a></li>
+        <br>
+        <li><a href="#stdlib">Standard library</a></li>
       </ul>
     </nav>
   </header>
@@ -51,18 +55,77 @@
     </section>
     <section id="examples">
       <h2>Examples</h2>
+      <p>Note: Most of the examples require standard library, so make sure you are not compiling with --nostdlib</p>
       <h3>Hello, World!</h3>
       <pre><code>
-        context main i32 argc i8** argv -> i32;
-          printf("Hello, World!\n");
-        context;
+context main i32 argc str* argv -> i32;
+  printf("Hello, World!\n");
+context;
       </code></pre>
-      <h3></h3>
+      <h3>Simple calculator</h3>
+      <pre><code>
+context calculate i32 a i32 b i8 op -> i32;
+  declare i32 result;
+  assign result = 0;
+
+  if op == '+';
+    assign result = a + b;
+  elif op == '-';
+    assign result = a - b;
+  elif op == '*';
+    assign result = a * b;
+  elif op == '/';
+    assign result = a / b;
+  fi;
+
+  return result;
+context;
+
+context main i32 argc str* argv -> i32;
+  declare i32 a;
+  declare i32 b;
+  declare i8 op;
+
+  declare i32* a_p;
+  declare i32* b_p;
+  declare i8* op_p;
+  
+  declare i32 result;
+
+  assign a_p -> a;
+  assign b_p -> b;
+  assign op_p -> op;
+
+  printf("Enter first number: ");
+  scanf("%d", a_p);
+  printf("Enter operator: ");
+  scanf(" %c", op_p);
+  printf("Enter second number: ");
+  scanf("%d", b_p);
+
+  calculate(a, b, op) -> result;
+
+  printf("Result: %d\n", result);
+
+  return 0;
+  
+context;
+      </code></pre>
+    </section>
+
+    <section id="stdlib">
+      <h2>Standard library</h2>
+      <h3>Memory allocations</h3>
+      <pre><code>alloc(i64 N) -> ptr: allocate N bytes of memory</code></pre>
+      <pre><code>delete(ptr __ptr) -> void: free __ptr</code></pre>
+      <h3>Collapses</h3>
+      <pre><code>collapse_handler(str desc) -> void: Collapse a running program and output description about the error (Note: not intended for use, instead you should use collapse())</code></pre>
+      <pre><code>collapse(str desc) -> void: Collapse a running program using collapse_handler()</code></pre>
+      <h3>Parse functions</h3>
+      <pre><code>parse_int(str) -> i32: Convert a string to an integer (Can collapse)</code></pre>
+      <pre><code></code></pre>
     </section>
   </main>
-  <footer>
-    <p>&copy; 2023 ExampleLang Documentation</p>
-  </footer>
  
   <script src="script.js"></script>
 </body>

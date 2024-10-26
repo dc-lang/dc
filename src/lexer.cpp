@@ -86,6 +86,32 @@ void Lexer::tokenize()
         current++;
       }
     }
+    else if (c == '<')
+    {
+      if (current + 1 < source.size() && source[current + 1] == '=')
+      {
+        tokens.push_back(Token(TokenType::OPERATOR, "<=", 0, line));
+        current += 2;
+      }
+      else
+      {
+        tokens.push_back(Token(TokenType::OPERATOR, "<", 0, line));
+        current++;
+      }
+    }
+    else if (c == '>')
+    {
+      if (current + 1 < source.size() && source[current + 1] == '=')
+      {
+        tokens.push_back(Token(TokenType::OPERATOR, ">=", 0, line));
+        current += 2;
+      }
+      else
+      {
+        tokens.push_back(Token(TokenType::OPERATOR, ">", 0, line));
+        current++;
+      }
+    }
     else if (c == '!')
     {
       if (current + 1 < source.size() && source[current + 1] == '=')
@@ -225,6 +251,7 @@ bool Lexer::isType(std::string &value)
       {"i32", TokenType::TYPE},
       {"i16", TokenType::TYPE},
       {"i8", TokenType::TYPE},
+      {"str", TokenType::TYPE},
       {"ptr", TokenType::TYPE}};
   return types.find(v) != types.end();
 }

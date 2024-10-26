@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     }
   }
 
-#if 0
+#if 1
   settings.filename = "/home/aceinet/dc/build/a.dc";
 #endif
   if (settings.filename.empty())
@@ -82,13 +82,16 @@ int main(int argc, char **argv)
   if (!settings.nostdlib)
   {
     input = R"(
-extern i32 printf i8* vararg;
-extern i32 scanf i8* vararg;
+extern i32 printf str vararg;
+extern i32 scanf str vararg;
 extern ptr malloc i64;
 extern void free ptr;
 extern void exit i32;
+extern i64 strtol str str* i32;
 
-"malloc with a different name, why not"
+
+"Memory Allocations"
+
 context alloc i64 __size -> ptr;
 declare ptr __ptr;
 
@@ -97,7 +100,6 @@ malloc(__size) -> __ptr;
 return __ptr;
 context;
 
-"free with a different name, why not too"
 context delete ptr __ptr -> void;
 
 free(__ptr);
@@ -105,13 +107,53 @@ free(__ptr);
 return;
 context;
 
-context collapse_handler i8* desc -> void;
 
-printf("\nProgram collapsed: %s\n", desc);
+"Collapses"
+
+context collapse_handler str desc -> void;
+
+printf("Program collapsed: %s\n", desc);
 
 exit(128);
 return;
 context;
+
+context collapse str desc -> void;
+
+collapse_handler(desc);
+
+return;
+context;
+
+
+"Parse functions"
+
+context parse_int str buff -> i32;
+declare i32 result;
+declare str end;
+declare str* end_p;
+declare i32 si;
+declare i64 sl;
+declare i8 c;
+
+assign end_p -> end;
+
+strtol(buff, end_p, 10) -> sl;
+
+if end == buff;
+collapse("[parse_int] parse failed");
+fi;
+
+deref end -> c;
+
+if 0 != c;
+collapse("[parse_int] parse failed");
+fi;
+
+return sl;
+
+context;
+
 )";
   }
   int stdlib_newlines = 0;

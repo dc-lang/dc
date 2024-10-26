@@ -48,6 +48,64 @@ std::vector<DCFunction> all_functions;
 
 Value *parseExpr(Type *preferred_type = nullptr, bool rewind = false);
 
+llvm::Value *castValue(llvm::Value *value, llvm::Type *targetType)
+{
+  // Get the current context
+  llvm::LLVMContext &context = builder.getContext();
+
+  // Check if the value is already of the target type
+  if (value->getType() == targetType)
+  {
+    return value; // No cast needed
+  }
+
+  // Perform the cast based on the types
+  if (value->getType()->isIntegerTy() && targetType->isIntegerTy())
+  {
+    // Integer to Integer cast
+    return builder.CreateIntCast(value, targetType, true, "int_cast");
+  }
+  else if (value->getType()->isFloatingPointTy() && targetType->isFloatingPointTy())
+  {
+    // Float to Float cast
+    return builder.CreateFPCast(value, targetType, "fp_cast");
+  }
+  else if (value->getType()->isIntegerTy() && targetType->isFloatingPointTy())
+  {
+    // Integer to Float cast
+    return builder.CreateSIToFP(value, targetType, "int_to_fp");
+  }
+  else if (value->getType()->isFloatingPointTy() && targetType->isIntegerTy())
+  {
+    // Float to Integer cast
+    return builder.CreateFPToSI(value, targetType, "fp_to_int");
+  }
+  else if (value->getType()->isIntegerTy() && targetType->isIntegerTy())
+  {
+    // Handle cases where the bit sizes differ
+    llvm::IntegerType *sourceType = llvm::dyn_cast<llvm::IntegerType>(value->getType());
+    llvm::IntegerType *targetIntType = llvm::dyn_cast<llvm::IntegerType>(targetType);
+
+    if (sourceType && targetIntType)
+    {
+      if (sourceType->getBitWidth() > targetIntType->getBitWidth())
+      {
+        // Source type has more bits than target type, perform truncation
+        return builder.CreateTrunc(value, targetType, "trunc");
+      }
+      else if (sourceType->getBitWidth() < targetIntType->getBitWidth())
+      {
+        // Source type has fewer bits than target type, perform extension
+        return builder.CreateZExt(value, targetType, "zext"); // Use CreateSExt for signed extension
+      }
+    }
+  }
+
+  // Handle other cases or throw an error
+  llvm::errs() << "Unsupported cast from " << *value->getType() << " to " << *targetType << "\n";
+  return nullptr;
+}
+
 std::vector<std::string> split(std::string s, std::string delimiter)
 {
   size_t pos_start = 0, pos_end, delim_len = delimiter.length();
@@ -80,6 +138,26 @@ std::string replaceAll(const std::string &str, const std::string &from, const st
   return result; // Return the modified string
 }
 
+std::string deleteDigits(const std::string &str)
+{
+  std::string res = "";
+
+  for (int i = 0; i < str.length(); i++)
+  {
+    char c = str.at(i);
+
+    if (c >= '0' && c <= '9')
+    {
+    }
+    else
+    {
+      res.push_back(c);
+    }
+  }
+
+  return res;
+}
+
 std::string getTypeName(llvm::Type *type)
 {
   if (!type)
@@ -97,8 +175,8 @@ std::string mangleCtxName(Type *returnType, std::vector<Type *> fnArgs, std::str
 {
   if (name == "main")
     return "main";
-  std::string moduleId = replaceAll(fmodule.getModuleIdentifier(), "_", "");
-  std::string fnName = replaceAll(name, "_", "");
+  std::string moduleId = deleteDigits(replaceAll(fmodule.getModuleIdentifier(), "_", ""));
+  std::string fnName = deleteDigits(replaceAll(name, "_", ""));
   // std::string res = "_Z" + std::to_string(fnArgs.size()) + "_" + replaceAll(fmodule.getModuleIdentifier(), "_", "");
   std::string res = "_Z" + std::to_string(fnName.length()) + fnName + std::to_string(moduleId.length()) + moduleId + "_";
   res += getTypeName(returnType);
@@ -164,7 +242,7 @@ std::string getMangledName(std::string raw)
   {
     std::string fnName = fn.fn->getName().str();
     std::string current = demangleCtxName(fnName);
-    if (current == replaceAll(raw, "_", ""))
+    if (current == deleteDigits(replaceAll(raw, "_", "")))
     {
       return fnName;
     }
@@ -205,6 +283,10 @@ Type *getTypeFromStr(std::string str)
   else if (v == "void")
   {
     res = builder.getVoidTy();
+  }
+  else if (v == "str")
+  {
+    res = builder.getInt8Ty()->getPointerTo();
   }
 
   int ptrCount = std::count(str.begin(), str.end(), '*');
@@ -322,7 +404,14 @@ Value *evaluate_expression(std::vector<Token> expr, Type *preferred_type)
     token = expr.at(i);
     if (token.type == TokenType::LITERAL)
     {
-      values.push(ConstantInt::get(preferred_type, std::stoi(token.value)));
+      if (token.value.at(0) != '\'')
+      {
+        values.push(ConstantInt::get(preferred_type, std::stoi(token.value)));
+      }
+      else
+      {
+        values.push(ConstantInt::get(preferred_type, token.value.at(1) - '0'));
+      }
     }
     else if (token.type == TokenType::IDENTIFIER)
     {
@@ -410,7 +499,7 @@ Value *parseExpr(Type *preferred_type, bool rewind)
     ty = builder.getInt32Ty();
   }
 
-  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON && token.value != "==" && token.value != "!=" && token.value != "->")
+  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON && token.value != "==" && token.value != "!=" && token.value != "->" && token.value != ">" && token.value != "<" && token.value != "<=" && token.value != ">=")
   {
     expr_tokens.push_back(token);
 
@@ -498,6 +587,12 @@ Value *cmpExpr(bool isElif = false)
   BasicBlock *mergeBlock = nullptr;
 
   Value *cmpRes = nullptr;
+
+  if (LHS->getType() != RHS->getType())
+  {
+    RHS = castValue(RHS, LHS->getType());
+  }
+
   if (op.value == "==")
   {
     cmpRes = builder.CreateICmpEQ(LHS, RHS);
@@ -505,6 +600,22 @@ Value *cmpExpr(bool isElif = false)
   else if (op.value == "!=")
   {
     cmpRes = builder.CreateICmpNE(LHS, RHS);
+  }
+  else if (op.value == ">")
+  {
+    cmpRes = builder.CreateICmpSGT(LHS, RHS);
+  }
+  else if (op.value == "<")
+  {
+    cmpRes = builder.CreateICmpSLT(LHS, RHS);
+  }
+  else if (op.value == ">=")
+  {
+    cmpRes = builder.CreateICmpSGE(LHS, RHS);
+  }
+  else if (op.value == "<=")
+  {
+    cmpRes = builder.CreateICmpSLE(LHS, RHS);
   }
 
   if (cmpRes == nullptr)
@@ -771,6 +882,12 @@ void compile(Lexer &lexer, Settings &settings)
         {
           lexer.iterIndex--;
           Value *res = parseExpr(functions.back().fnType->getReturnType());
+          if (res->getType() != functions.back().fnType->getReturnType())
+          {
+            // res = builder.CreateCast(Instruction::CastOps::BitCast, res, functions.back().fnType->getReturnType());
+            // res = builder.CreateBitCast(res, functions.back().fnType->getReturnType());
+            res = castValue(res, functions.back().fnType->getReturnType());
+          }
           builder.CreateRet(res);
         }
       }
