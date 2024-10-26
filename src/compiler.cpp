@@ -746,7 +746,10 @@ void compile(Lexer &lexer, Settings &settings)
         {
           std::string argName = argNames.at(i);
           Type *argType = argTypes.at(i);
-          functions.back().variables.push_back({argType, argName, arg, true});
+          // functions.back().variables.push_back({argType, argName, arg, true});
+          Value *var = builder.CreateAlloca(argType);
+          builder.CreateStore(arg, var);
+          functions.back().variables.push_back({argType, argName, var, false});
           arg = fnArgs++;
         }
       }

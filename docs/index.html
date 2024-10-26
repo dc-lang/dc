@@ -1,1 +1,70 @@
-docs here
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ExampleLang Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>DC Programming language</h1>
+    <nav>
+      <ul>
+        <li><a href="#introduction">Introduction</a></li>
+        <li><a href="#installation">Installation</a></li>
+        <li><a href="#examples">Examples</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main>
+    <section id="introduction">
+      <h2>Introduction</h2>
+      <p>DC - C like language designed for small scripts/programs, with a unique syntax</p>
+      <p>DC Is built with LLVM, which makes it easy to compile code for multi architectures</p>
+    </section>
+    <section id="installation">
+      <h2>Installation (linux)</h2>
+      <h3>For x86_64</h3>
+      <a href="https://github.com/aceinetx/dc/releases/download/nightly-release/dcc-x86_64">Nightly release</a>
+      <h3>Any other architecture</h3>
+      <p>For other architectures you will need to compile dc compiler yourself</p>
+      <p>Dependencies:</p>
+      <ul>
+        <li>Git</li>
+        <li>Any C++ Compiler</li>
+        <li>CMake</li>
+        <li>Make</li>
+        <li>LLVM 18 or 19</li>
+        <li>LLVM Tools (such as llc)</li>
+      </ul>
+      <h4>1. Clone the repository</h4>
+      <pre><code>git clone https://github.com/aceinetx/dc</code></pre>
+      <h4>2. Setup directories</h4>
+      <pre><code>cd dc</code></pre>
+      <pre><code>mkdir build && cd build</code></pre>
+      <h4>3. Configure</h4>
+      <pre><code>cmake ..</code></pre>
+      <h4>4. Compile</h4>
+      <pre><code>make -j4</code></pre>
+      <p>This might take a long time depending on your machine, on my end it compiles in ~20 seconds</p>
+    </section>
+    <section id="examples">
+      <h2>Examples</h2>
+      <h3>Hello, World!</h3>
+      <pre><code>
+        context main i32 argc i8** argv -> i32;
+          printf("Hello, World!\n");
+        context;
+      </code></pre>
+      <h3></h3>
+    </section>
+  </main>
+  <footer>
+    <p>&copy; 2023 ExampleLang Documentation</p>
+  </footer>
+ 
+  <script src="script.js"></script>
+</body>
+</html>
+
