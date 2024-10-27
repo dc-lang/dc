@@ -731,7 +731,7 @@ std::string getLabelID()
 
 void compile(Lexer &lexer, Settings &settings)
 {
-  fmodule.setModuleIdentifier(settings.getFileNameNoExtenstion());
+  fmodule.setModuleIdentifier(replaceAll(settings.output_name, ".", "_"));
   fmodule.setDataLayout("e-m:e-i64:64-n8:16:32:64-S128");
   g_lexer = &lexer;
   emitStandardLibrary();
@@ -1171,7 +1171,7 @@ void compile(Lexer &lexer, Settings &settings)
     token = lexer.next();
   }
 
-  std::string rawFileName = settings.getFileNameNoExtenstion();
+  std::string rawFileName = settings.output_name;
   std::string llcargs = "";
   std::string ccargs = "";
   if (settings.pic == true)

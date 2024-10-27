@@ -2,6 +2,7 @@
 #define ARGS_H
 
 #include <string>
+#include <vector>
 
 typedef enum
 {
@@ -13,12 +14,11 @@ typedef enum
 
 typedef struct
 {
-  std::string filename;
+  std::vector<std::string> filenames;
+  std::string output_name;
   std::string libs;
   bool nostdlib;
   CompilationLevel compilation_level;
-
-  std::string getFileNameNoExtenstion();
 
   bool pic;
 } Settings;

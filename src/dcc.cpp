@@ -13,7 +13,7 @@ int main(int argc, char **argv)
   ArgParser argparser = ArgParser(argc, argv);
 
   settings.compilation_level = CL_EXE;
-  settings.filename = "";
+  settings.output_name = "a.out";
   settings.libs = "";
   settings.pic = true;
   settings.nostdlib = false;
@@ -26,7 +26,7 @@ int main(int argc, char **argv)
 
     if (arg.at(0) != '-')
     {
-      settings.filename = arg;
+      settings.filenames.push_back(arg);
     }
     else
     {
@@ -41,6 +41,7 @@ int main(int argc, char **argv)
         printf("  --nostdlib               Disable standard library\n");
         printf("  -l <lib>                 Link libraries\n");
         printf("  -v                       Get current version\n");
+        printf("  -o                       Set output filename\n");
         return 0;
       }
       else if (arg == "--ir" || arg == "-i")
@@ -68,6 +69,10 @@ int main(int argc, char **argv)
         printf("dcc " DCC_VER "\n");
         return 0;
       }
+      else if (arg == "-o")
+      {
+        settings.output_name = argparser.next();
+      }
       else
       {
         printf("\x1b[1mdcc:\x1b[0m \x1b[1;31merror:\x1b[0m unrecognized command-line option ’%s’\n", arg.c_str());
@@ -79,7 +84,7 @@ int main(int argc, char **argv)
 #if 0
   settings.filename = "/home/aceinet/dc/build/a.dc";
 #endif
-  if (settings.filename.empty())
+  if (settings.filenames.empty())
   {
     printf("\x1b[1mdcc:\x1b[0m \x1b[1;31mfatal error:\x1b[0m no input files\n");
     printf("compilation terminated.\n");
@@ -173,7 +178,11 @@ context;
     }
   }
 
-  input += "\n" + readFile(settings.filename);
+  for (std::string &filename : settings.filenames)
+  {
+    input += "\n" + readFile(filename);
+  }
+
   Lexer lexer(input, stdlib_newlines);
 
   compile(lexer, settings);
