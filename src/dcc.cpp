@@ -5,6 +5,8 @@
 #include <vector>
 #include <compiler.hpp>
 
+#define DCC_VER "nightly"
+
 int main(int argc, char **argv)
 {
   Settings settings;
@@ -36,8 +38,9 @@ int main(int argc, char **argv)
         printf("  --ir (-i)                Generate only IR code\n");
         printf("  --asm (-S)               Generate only assembly\n");
         printf("  --obj (-c)               Generate only object file\n");
-        printf("  --nostdlib                Disable standard library\n");
+        printf("  --nostdlib               Disable standard library\n");
         printf("  -l <lib>                 Link libraries\n");
+        printf("  -v                       Get current version\n");
         return 0;
       }
       else if (arg == "--ir" || arg == "-i")
@@ -60,6 +63,11 @@ int main(int argc, char **argv)
       {
         settings.libs += argparser.next() + " ";
       }
+      else if (arg == "-v")
+      {
+        printf("dcc " DCC_VER "\n");
+        return 0;
+      }
       else
       {
         printf("\x1b[1mdcc:\x1b[0m \x1b[1;31merror:\x1b[0m unrecognized command-line option ’%s’\n", arg.c_str());
@@ -68,7 +76,7 @@ int main(int argc, char **argv)
     }
   }
 
-#if 1
+#if 0
   settings.filename = "/home/aceinet/dc/build/a.dc";
 #endif
   if (settings.filename.empty())
