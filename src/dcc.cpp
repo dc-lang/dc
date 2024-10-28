@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     }
   }
 
-#if 1
+#if 0
   // settings.filenames.push_back("/home/aceinet/dc/build/a.dc");
   settings.filenames.push_back("/home/aceinet/dcmake/fs.dc");
   settings.filenames.push_back("/home/aceinet/dcmake/lua.dc");
