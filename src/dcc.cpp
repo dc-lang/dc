@@ -103,24 +103,6 @@ extern void exit i32;
 extern i64 strtol str str* i32;
 
 
-"Memory Allocations"
-
-context alloc i64 __size -> ptr;
-declare ptr __ptr;
-
-malloc(__size) -> __ptr;
-
-return __ptr;
-context;
-
-context delete ptr __ptr -> void;
-
-free(__ptr);
-
-return;
-context;
-
-
 "Collapses"
 
 context collapse_handler str desc -> void;
@@ -137,6 +119,30 @@ collapse_handler(desc);
 
 return;
 context;
+
+
+"Memory Allocations"
+
+context alloc i64 __size -> ptr;
+declare ptr __ptr;
+
+malloc(__size) -> __ptr;
+
+if ptr == 0;
+  collapse("Failed to allocate memory");
+fi;
+
+return __ptr;
+context;
+
+context delete ptr __ptr -> void;
+
+free(__ptr);
+
+return;
+context;
+
+
 
 
 "Parse functions"
