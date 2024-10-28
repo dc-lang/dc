@@ -59,6 +59,24 @@ llvm::Value *castValue(llvm::Value *value, llvm::Type *targetType)
     return value; // No cast needed
   }
 
+  // Handle pointer to integer casts and vice versa
+  if (llvm::PointerType *ptrType = llvm::dyn_cast<llvm::PointerType>(value->getType()))
+  {
+    if (targetType->isIntegerTy())
+    {
+      // Pointer to Integer cast
+      return builder.CreatePtrToInt(value, targetType, "ptr_to_int");
+    }
+  }
+  else if (llvm::PointerType *targetPtrType = llvm::dyn_cast<llvm::PointerType>(targetType))
+  {
+    if (value->getType()->isIntegerTy())
+    {
+      // Integer to Pointer cast
+      return builder.CreateIntToPtr(value, targetPtrType, "int_to_ptr");
+    }
+  }
+
   // Perform the cast based on the types
   if (value->getType()->isIntegerTy() && targetType->isIntegerTy())
   {
