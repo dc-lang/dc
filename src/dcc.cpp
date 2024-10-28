@@ -81,8 +81,8 @@ int main(int argc, char **argv)
     }
   }
 
-#if 0
-  settings.filename = "/home/aceinet/dc/build/a.dc";
+#if 1
+  settings.filenames.push_back("/home/aceinet/dc/build/a.dc");
 #endif
   if (settings.filenames.empty())
   {
@@ -128,7 +128,7 @@ declare ptr __ptr;
 
 malloc(__size) -> __ptr;
 
-if ptr == 0;
+if __ptr == 0;
   collapse("Failed to allocate memory");
 fi;
 
