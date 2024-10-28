@@ -46,7 +46,7 @@ typedef struct
 std::vector<DCFunction> functions;
 std::vector<DCFunction> all_functions;
 
-Value *parseExpr(Type *preferred_type = nullptr, bool rewind = false);
+Value *parseExpr(Type *preferred_type = nullptr, bool rewind = false, std::string stopExprValue = "");
 
 llvm::Value *castValue(llvm::Value *value, llvm::Type *targetType)
 {
@@ -504,7 +504,7 @@ Value *evaluate_expression(std::vector<Token> expr, Type *preferred_type)
   return values.top();
 }
 
-Value *parseExpr(Type *preferred_type, bool rewind)
+Value *parseExpr(Type *preferred_type, bool rewind, std::string stopExprValue)
 {
   int old_pos = g_lexer->iterIndex;
   Token token = g_lexer->next();
@@ -517,7 +517,7 @@ Value *parseExpr(Type *preferred_type, bool rewind)
     ty = builder.getInt32Ty();
   }
 
-  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON && token.value != "==" && token.value != "!=" && token.value != "->" && token.value != ">" && token.value != "<" && token.value != "<=" && token.value != ">=")
+  while (token.type != TokenType::END && token.type != TokenType::SEMICOLON && token.value != "==" && token.value != "!=" && token.value != "->" && token.value != ">" && token.value != "<" && token.value != "<=" && token.value != ">=" && token.value != stopExprValue)
   {
     expr_tokens.push_back(token);
 
@@ -1085,7 +1085,7 @@ void compile(Lexer &lexer, Settings &settings)
 
         DCVariable *arrayVar = getVarFromFunction(functions.back(), token.value);
 
-        Value *index = parseExpr();
+        Value *index = parseExpr(nullptr, false, "=");
 
         Value *res = builder.CreateGEP(arrayVar->llvmType, builder.CreateLoad(arrayVar->llvmType, arrayVar->llvmVar), index);
 
@@ -1101,6 +1101,15 @@ void compile(Lexer &lexer, Settings &settings)
           DCVariable *storeVar = getVarFromFunction(functions.back(), token.value);
 
           builder.CreateStore(builder.CreateLoad(storeVar->llvmType, res), storeVar->llvmVar);
+        }
+        else if (token.type == TokenType::OPERATOR)
+        {
+          Value *storeVar = parseExpr();
+          builder.CreateStore(storeVar, res);
+        }
+        else
+        {
+          compilationError("Unsupported token in array after identifier");
         }
       }
 
