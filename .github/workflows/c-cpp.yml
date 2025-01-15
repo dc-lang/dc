@@ -20,15 +20,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wget
           wget https://apt.llvm.org/llvm-snapshot.gpg.key -O - | sudo apt-key add -
-          echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-18 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-focal-18.list
+          echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-focal-19.list
           sudo apt-get update
-          sudo apt-get install -y llvm-18 clang-18 build-essential cmake
+          sudo apt-get install -y llvm-19 clang-19 build-essential cmake
 
       - name: Build
         run: |
           mkdir build
           cd build
-          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-18 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-18
+          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
           make -j4
           mv dcc ../dcc-x86_64
       
