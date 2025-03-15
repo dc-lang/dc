@@ -19,31 +19,19 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget
-          sudo apt-get install -y build-essential cmake
-
-      - name: Download and build LLVM
-        run: |
-          # Set LLVM version
-          LLVM_VERSION=19.1
-          LLVM_SRC=https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}.0/llvm-${LLVM_VERSION}.0.src.tar.xz
-          LLVM_BUILD_DIR=llvm-build
-
-          # Download LLVM source
-          wget $LLVM_SRC -O llvm-${LLVM_VERSION}.0.src.tar.xz
-          tar -xf llvm-${LLVM_VERSION}.0.src.tar.xz
-          mkdir $LLVM_BUILD_DIR
-          cd $LLVM_BUILD_DIR
-
-          # Configure and build LLVM as a static library
-          cmake ../llvm-${LLVM_VERSION}.0.src -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
-          make -j$(nproc)
+          wget https://apt.llvm.org/llvm-snapshot.gpg.key -O - | sudo apt-key add -
+          echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-19 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-focal-19.list
+          wget http://es.archive.ubuntu.com/ubuntu/pool/main/libf/libffi/libffi7_3.3-4_amd64.deb
+          sudo dpkg -i libffi7_3.3-4_amd64.deb
+          sudo apt-get update
+          sudo apt-get install -y libllvm19 llvm-19 clang-19 build-essential cmake
 
       - name: Build
         run: |
           mkdir build
           cd build
-          cmake .. -DLLVM_INCLUDE_DIRS=../llvm-build/include -DLLVMC_INCLUDE_DIRS=../llvm-build/include/llvm-c -DCMAKE_CXX_FLAGS="-static"
-          make -j$(nproc)
+          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
+          make -j4
           mv dcc ../dcc-x86_64
       
       - name: Upload artifact
