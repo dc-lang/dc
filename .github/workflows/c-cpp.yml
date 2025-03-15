@@ -24,7 +24,7 @@ jobs:
       - name: Download and build LLVM
         run: |
           # Set LLVM version
-          LLVM_VERSION=19
+          LLVM_VERSION=19.1
           LLVM_SRC=https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}.0/llvm-${LLVM_VERSION}.0.src.tar.xz
           LLVM_BUILD_DIR=llvm-build
 
