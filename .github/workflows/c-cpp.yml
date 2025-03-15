@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19
+          cmake .. -DLLVM_INCLUDE_DIRS=/usr/include/llvm-19 -DLLVMC_INCLUDE_DIRS=/usr/include/llvm-c-19 -DCMAKE_C_FLAGS="-static"
           make -j4
           mv dcc ../dcc-x86_64
       
